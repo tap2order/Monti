@@ -74,7 +74,7 @@ export default function AdminHome() {
     <span className="adminHomeCardTitle">Dashboard za maserku</span>
   </div>
   <div className="adminHomeCardDesc">
-    Pregled termina, zahtjeva gostiju i dostupnih slotova za masaže.
+    Pregled termina,zahtjeva gostiju i dostupnih slotova za masaže.
   </div>
 </Link>
 
