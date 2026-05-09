@@ -38,7 +38,6 @@ app.use(
 
 app.use(express.json());
 
-console.log("DATABASE_URL:", process.env.DATABASE_URL);
 
 /* console.log("ADMIN_USER =", process.env.ADMIN_USER);
 console.log("ADMIN_PASS set?", Boolean(process.env.ADMIN_PASS)); */
