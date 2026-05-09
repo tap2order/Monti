@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "../css/AdminMenuPage.css";
+import mockMenu from "../mock/adminMenuMock.json";
 
 export default function AdminMenuPage() {
   const api = import.meta.env.VITE_API_URL;
@@ -53,6 +55,10 @@ export default function AdminMenuPage() {
   const [newItemImage, setNewItemImage] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
 
+  const [showNewTranslations, setShowNewTranslations] = useState(false);
+  const [openItemId, setOpenItemId] = useState("");
+  const [mobileTab, setMobileTab] = useState("category");
+
   const [itemDrafts, setItemDrafts] = useState({});
   const [savingItemId, setSavingItemId] = useState("");
   const [deletingItemId, setDeletingItemId] = useState("");
@@ -60,14 +66,6 @@ export default function AdminMenuPage() {
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [deletingCategoryId, setDeletingCategoryId] = useState("");
-
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 820);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 820);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
 
   const selectedCat = useMemo(
     () => menu.find((c) => c.id === selectedCatId) || null,
@@ -79,13 +77,24 @@ export default function AdminMenuPage() {
     setSuccess("");
   }
 
-  async function loadMenu() {
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---------------------------------------------------------
+  // 1) MOCK verzija za lokalni UI rad
+  // ---------------------------------------------------------
+  async function loadMenuMock() {
     setLoading(true);
     setErr("");
+
     try {
-      const r = await fetch(`${api}/menu`);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
+      const data = mockMenu;
       setMenu(data);
 
       setSelectedCatId((prev) => {
@@ -97,6 +106,41 @@ export default function AdminMenuPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // ---------------------------------------------------------
+  // 2) PRAVA API verzija
+  // Ostavljena ovdje da je ne brišemo
+  // ---------------------------------------------------------
+  async function loadMenuApi() {
+    setLoading(true);
+    setErr("");
+
+    try {
+      const r = await fetch(`${api}/menu`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+
+      setMenu(data);
+
+      setSelectedCatId((prev) => {
+        if (prev && data.some((c) => c.id === prev)) return prev;
+        return data[0]?.id || "";
+      });
+    } catch (e) {
+      setErr(String(e.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ---------------------------------------------------------
+  // AKTIVNA loadMenu funkcija
+  // Ovdje samo biraj koju želiš koristiti
+  // ---------------------------------------------------------
+  async function loadMenu() {
+    await loadMenuMock();
+    // await loadMenuApi();
   }
 
   useEffect(() => {
@@ -124,6 +168,7 @@ export default function AdminMenuPage() {
       };
     }
     setItemDrafts(drafts);
+    setOpenItemId("");
   }, [selectedCat]);
 
   function updateDraft(itemId, field, value) {
@@ -171,7 +216,10 @@ export default function AdminMenuPage() {
       setSuccess("Kategorija je uspješno dodana.");
       await loadMenu();
 
-      if (data?.id) setSelectedCatId(data.id);
+      if (data?.id) {
+        setSelectedCatId(data.id);
+        setMobileTab("category");
+      }
     } catch (e) {
       setErr(String(e.message || e));
     } finally {
@@ -237,7 +285,9 @@ export default function AdminMenuPage() {
 
     if (!selectedCatId) return setErr("Prvo odaberite kategoriju.");
     if (!name) return setErr("Osnovni naziv artikla je obavezan.");
-    if (!Number.isFinite(price) || price <= 0) return setErr("Cijena mora biti veća od 0.");
+    if (!Number.isFinite(price) || price <= 0) {
+      return setErr("Cijena mora biti veća od 0.");
+    }
 
     resetMessages();
     setIsCreatingItem(true);
@@ -268,8 +318,10 @@ export default function AdminMenuPage() {
       setNewItemName4("");
       setNewItemImage("");
       setNewItemPrice("");
+      setShowNewTranslations(false);
       setSuccess("Artikal je uspješno dodan.");
       await loadMenu();
+      setMobileTab("items");
     } catch (e) {
       setErr(String(e.message || e));
     } finally {
@@ -282,7 +334,9 @@ export default function AdminMenuPage() {
     const price = Number(draft.price);
 
     if (!draft.name.trim()) return setErr("Osnovni naziv artikla je obavezan.");
-    if (!Number.isFinite(price) || price <= 0) return setErr("Cijena mora biti veća od 0.");
+    if (!Number.isFinite(price) || price <= 0) {
+      return setErr("Cijena mora biti veća od 0.");
+    }
 
     const patch = {
       name: draft.name.trim(),
@@ -317,7 +371,7 @@ export default function AdminMenuPage() {
   }
 
   async function deleteItem(id) {
-    if (!confirm("Obrisati ovaj artikl?")) return;
+    if (!confirm("Obrisati ovaj artikal?")) return;
 
     resetMessages();
     setDeletingItemId(id);
@@ -339,615 +393,465 @@ export default function AdminMenuPage() {
     }
   }
 
-  const wrap = {
-    maxWidth: 1400,
-    margin: "24px auto",
-    padding: 12,
-    color: "white",
-  };
-
-  const header = {
-    position: "sticky",
-    top: 0,
-    zIndex: 5,
-    background: "rgba(10, 12, 18, 0.92)",
-    border: "1px solid #263043",
-    borderRadius: 16,
-    padding: 16,
-    backdropFilter: "blur(8px)",
-  };
-
-  const grid = {
-    display: "grid",
-    gridTemplateColumns: isMobile ? "1fr" : "320px 1fr",
-    gap: 16,
-    marginTop: 16,
-  };
-
-  const card = {
-    background: "#10131a",
-    border: "1px solid #263043",
-    borderRadius: 16,
-    padding: 16,
-  };
-
-  const sectionTitle = {
-    marginTop: 0,
-    marginBottom: 12,
-    fontSize: 18,
-    fontWeight: 900,
-  };
-
-  const btn = {
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: "1px solid #2b3548",
-    background: "#1b2230",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: 800,
-  };
-
-  const btnPrimary = {
-    ...btn,
-    background: "#23406b",
-    borderColor: "#355789",
-  };
-
-  const btnDanger = {
-    ...btn,
-    borderColor: "#7a2b2b",
-    background: "#2a1214",
-  };
-
-  const btnMuted = {
-    ...btn,
-    background: "#141922",
-  };
-
-  const input = {
-    width: "100%",
-    padding: "12px 12px",
-    borderRadius: 12,
-    border: "1px solid #2b3548",
-    background: "#0c0f15",
-    color: "white",
-    outline: "none",
-    boxSizing: "border-box",
-  };
-
-  const label = {
-    display: "block",
-    fontSize: 12,
-    fontWeight: 800,
-    opacity: 0.85,
-    marginBottom: 6,
-  };
-
-  const small = { fontSize: 12, opacity: 0.8 };
-
-  const itemEditorGrid = {
-    display: "grid",
-    gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
-    gap: 12,
-  };
-
-  const itemCardGrid = {
-    display: "grid",
-    gridTemplateColumns: isMobile ? "1fr" : "220px 1fr",
-    gap: 14,
-    alignItems: "start",
-  };
-
   return (
-    <div style={wrap}>
-      <div style={header}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
+    <div className="adminMenuPage">
+      <div className="adminMenuShell">
+        <div className="adminMenuTopbar">
           <div>
-            <h1 style={{ margin: 0, fontSize: 24 }}>Admin • Meni</h1>
+            <div className="adminMenuKicker">Tap2Order Monti</div>
+            <h1 className="adminMenuTitle">Room Service Menu</h1>
+            <p className="adminMenuSubtitle">
+              Čišći pregled kategorija i artikala, sa manje haosa na ekranu.
+            </p>
           </div>
 
-          <button style={btnMuted} onClick={loadMenu}>
+          <button className="adminMenuBtn adminMenuBtnGhost" onClick={loadMenu}>
             Osvježi
           </button>
         </div>
 
-        {err && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid #7a2b2b",
-              background: "#1a0f12",
-              color: "#fecaca",
-              fontWeight: 700,
-            }}
-          >
-            {err}
-          </div>
-        )}
-
+        {err && <div className="adminMenuAlert adminMenuAlertError">{err}</div>}
         {success && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid #245a35",
-              background: "#0f1a13",
-              color: "#bbf7d0",
-              fontWeight: 700,
-            }}
-          >
-            {success}
-          </div>
+          <div className="adminMenuAlert adminMenuAlertSuccess">{success}</div>
         )}
-      </div>
 
-      {loading ? (
-        <div style={{ ...card, marginTop: 16 }}>Učitavanje…</div>
-      ) : (
-        <div style={grid}>
-          <div style={card}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-              <h3 style={sectionTitle}>Kategorije</h3>
-              <div style={small}>{menu.length} ukupno</div>
-            </div>
+        {loading ? (
+          <div className="adminMenuPanel">Učitavanje…</div>
+        ) : (
+          <>
+            <section className="adminMenuPanel adminMenuCategoriesPanel">
+              <div className="adminMenuSectionHead">
+                <h2 className="adminMenuSectionTitle">Kategorije</h2>
+                <span className="adminMenuMuted">{menu.length} ukupno</span>
+              </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: 8,
-                marginBottom: 16,
-              }}
-            >
-              <input
-                style={input}
-                placeholder="Upiši naziv nove kategorije"
-                value={newCat}
-                onChange={(e) => setNewCat(e.target.value)}
-              />
-              <button style={btnPrimary} onClick={createCategory} disabled={isCreatingCategory}>
-                {isCreatingCategory ? "Dodavanje..." : "Dodaj"}
+              <div className="adminMenuToolbarGrid">
+                <div className="adminMenuField">
+                  <label className="adminMenuLabel">Odaberi kategoriju</label>
+                  <select
+                    className="adminMenuSelect"
+                    value={selectedCatId}
+                    onChange={(e) => setSelectedCatId(e.target.value)}
+                  >
+                    <option value="">Odaberi kategoriju</option>
+                    {menu.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.items?.length ?? 0})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="adminMenuField">
+                  <label className="adminMenuLabel">Dodaj kategoriju</label>
+                  <div className="adminMenuInlineRow">
+                    <input
+                      className="adminMenuInput"
+                      placeholder="Nova kategorija"
+                      value={newCat}
+                      onChange={(e) => setNewCat(e.target.value)}
+                    />
+                    <button
+                      className="adminMenuBtn adminMenuBtnPrimary"
+                      onClick={createCategory}
+                      disabled={isCreatingCategory}
+                    >
+                      {isCreatingCategory ? "..." : "Dodaj"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="adminMenuMobileTabs">
+              <button
+                className={`adminMenuMobileTab ${mobileTab === "category" ? "is-active" : ""}`}
+                onClick={() => setMobileTab("category")}
+              >
+                Kategorija
+              </button>
+              <button
+                className={`adminMenuMobileTab ${mobileTab === "new" ? "is-active" : ""}`}
+                onClick={() => setMobileTab("new")}
+              >
+                Novi artikal
+              </button>
+              <button
+                className={`adminMenuMobileTab ${mobileTab === "items" ? "is-active" : ""}`}
+                onClick={() => setMobileTab("items")}
+              >
+                Artikli
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {menu.map((c) => {
-                const isSelected = c.id === selectedCatId;
-                const isDeleting = deletingCategoryId === c.id;
-
-                return (
-                  <div
-                    key={c.id}
-                    style={{
-                      border: isSelected ? "1px solid #4b6ea8" : "1px solid #263043",
-                      borderRadius: 14,
-                      background: isSelected ? "#162236" : "#0d1017",
-                      padding: 10,
-                    }}
-                  >
-                    <button
-                      onClick={() => setSelectedCatId(c.id)}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        background: "transparent",
-                        border: "none",
-                        color: "white",
-                        cursor: "pointer",
-                        padding: 0,
-                      }}
-                      title="Odaberi kategoriju"
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                        <span style={{ fontWeight: 900 }}>{c.name}</span>
-                        <span
-                          style={{
-                            minWidth: 30,
-                            textAlign: "center",
-                            padding: "2px 8px",
-                            borderRadius: 999,
-                            background: "#243042",
-                            fontWeight: 800,
-                            fontSize: 12,
-                          }}
-                        >
-                          {c.items?.length ?? 0}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>
-                        {isSelected ? "Aktivna kategorija" : "Klikni za pregled i uređivanje artikala"}
-                      </div>
-                    </button>
-
-                    <div style={{ marginTop: 10 }}>
-                      <button
-                        style={{ ...btnDanger, width: "100%" }}
-                        onClick={() => deleteCategory(c.id)}
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? "Brisanje..." : "Obriši kategoriju"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {menu.length === 0 && <div style={small}>Još nema kategorija.</div>}
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                <h3 style={sectionTitle}>Odabrana kategorija</h3>
-                {selectedCat ? (
-                  <span style={small}>{(selectedCat.items || []).length} artikala</span>
-                ) : (
-                  <span style={small}>Odaberi kategoriju lijevo</span>
-                )}
-              </div>
-
-              {!selectedCat ? (
-                <div style={small}>Prvo odaberi kategoriju sa lijeve strane.</div>
-              ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile ? "1fr" : "1fr auto auto",
-                    gap: 10,
-                    alignItems: "end",
-                  }}
+            <div className="adminMenuContentGrid">
+              <div className="adminMenuLeftColumn">
+                <section
+                  className={`adminMenuPanel ${
+                    mobileTab === "category"
+                      ? "is-mobile-section-visible"
+                      : "is-mobile-section-hidden"
+                  }`}
                 >
-                  <div>
-                    <label style={label}>Naziv kategorije</label>
-                    <input
-                      style={input}
-                      value={categoryDraftName}
-                      onChange={(e) => setCategoryDraftName(e.target.value)}
-                      placeholder="Naziv kategorije"
-                    />
+                  <div className="adminMenuSectionHead">
+                    <h2 className="adminMenuSectionTitle">Odabrana kategorija</h2>
+                    <span className="adminMenuMuted">
+                      {selectedCat ? `${selectedCat.items?.length || 0} artikala` : "—"}
+                    </span>
                   </div>
 
-                  <button style={btnPrimary} onClick={saveCategoryName} disabled={isSavingCategory}>
-                    {isSavingCategory ? "Čuvanje..." : "Sačuvaj naziv"}
-                  </button>
+                  {!selectedCat ? (
+                    <div className="adminMenuEmpty">Odaberi kategoriju iznad.</div>
+                  ) : (
+                    <div className="adminMenuCategoryEdit">
+                      <div className="adminMenuField">
+                        <label className="adminMenuLabel">Naziv kategorije</label>
+                        <input
+                          className="adminMenuInput"
+                          value={categoryDraftName}
+                          onChange={(e) => setCategoryDraftName(e.target.value)}
+                          placeholder="Naziv kategorije"
+                        />
+                      </div>
 
-                  <button
-                    style={btnDanger}
-                    onClick={() => deleteCategory(selectedCat.id)}
-                    disabled={deletingCategoryId === selectedCat.id}
-                  >
-                    {deletingCategoryId === selectedCat.id ? "Brisanje..." : "Obriši kategoriju"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div style={card}>
-              <h3 style={sectionTitle}>Dodaj novi artikal</h3>
-
-              {!selectedCat ? (
-                <div style={small}>Odaberi kategoriju da bi dodao novi artikal.</div>
-              ) : (
-                <>
-                  <div
-                    style={{
-                      marginBottom: 14,
-                      padding: 10,
-                      borderRadius: 12,
-                      background: "#0d1017",
-                      border: "1px solid #263043",
-                      fontSize: 13,
-                    }}
-                  >
-                    Novi artikal će biti dodan u kategoriju:{" "}
-                    <strong>{selectedCat.name}</strong>
-                  </div>
-
-                  <div style={itemEditorGrid}>
-                    <div>
-                      <label style={label}>Osnovni naziv (BHS)</label>
-                      <input
-                        style={input}
-                        placeholder="npr. Palačinke Nutella"
-                        value={newItemName}
-                        onChange={(e) => setNewItemName(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={label}>Cijena</label>
-                      <input
-                        style={input}
-                        placeholder="npr. 7.5"
-                        value={newItemPrice}
-                        onChange={(e) => setNewItemPrice(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={label}>Engleski naziv</label>
-                      <input
-                        style={input}
-                        placeholder="npr. Nutella pancakes"
-                        value={newItemName1}
-                        onChange={(e) => setNewItemName1(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={label}>Njemački naziv</label>
-                      <input
-                        style={input}
-                        placeholder="npr. Nutella Pfannkuchen"
-                        value={newItemName2}
-                        onChange={(e) => setNewItemName2(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={label}>Italijanski naziv</label>
-                      <input
-                        style={input}
-                        placeholder="npr. Pancake alla Nutella"
-                        value={newItemName3}
-                        onChange={(e) => setNewItemName3(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={label}>Francuski naziv</label>
-                      <input
-                        style={input}
-                        placeholder="npr. Crêpes Nutella"
-                        value={newItemName4}
-                        onChange={(e) => setNewItemName4(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 12 }}>
-                    <label style={label}>Image URL</label>
-                    <input
-                      style={input}
-                      placeholder="https://... ili /images/..."
-                      value={newItemImage}
-                      onChange={(e) => setNewItemImage(e.target.value)}
-                    />
-                  </div>
-
-                  <div style={{ marginTop: 14 }}>
-                    <button style={btnPrimary} onClick={createItem} disabled={isCreatingItem}>
-                      {isCreatingItem ? "Dodavanje..." : "Dodaj artikl"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div style={card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                <h3 style={sectionTitle}>Postojeći artikli</h3>
-                {selectedCat ? (
-                  <span style={small}>
-                    {(selectedCat.items || []).length} u kategoriji <strong>{selectedCat.name}</strong>
-                  </span>
-                ) : (
-                  <span style={small}>Odaberi kategoriju</span>
-                )}
-              </div>
-
-              {!selectedCat ? (
-                <div style={small}>Odaberi kategoriju lijevo da vidiš artikle.</div>
-              ) : (selectedCat.items || []).length === 0 ? (
-                <div style={small}>Još nema artikala u ovoj kategoriji.</div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {(selectedCat.items || []).map((it, index) => {
-                    const draft = getItemDraft(it);
-                    const isSaving = savingItemId === it.id;
-                    const isDeleting = deletingItemId === it.id;
-
-                    return (
-                      <div
-                        key={it.id}
-                        style={{
-                          border: "1px solid #263043",
-                          borderRadius: 16,
-                          background: "#0d1017",
-                          padding: 14,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 10,
-                            alignItems: "center",
-                            marginBottom: 12,
-                            flexWrap: "wrap",
-                          }}
+                      <div className="adminMenuActionRow">
+                        <button
+                          className="adminMenuBtn adminMenuBtnPrimary"
+                          onClick={saveCategoryName}
+                          disabled={isSavingCategory}
                         >
-                          <div>
-                            <div style={{ fontWeight: 900, fontSize: 16 }}>
-                              Artikal #{index + 1}
-                            </div>
-                            <div style={{ fontSize: 12, opacity: 0.75 }}>
-                              ID: {it.id}
-                            </div>
-                          </div>
+                          {isSavingCategory ? "Čuvanje..." : "Sačuvaj"}
+                        </button>
 
-                          <div
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 999,
-                              background: "#1a2230",
-                              fontSize: 12,
-                              fontWeight: 800,
-                            }}
-                          >
-                            Kategorija: {selectedCat.name}
-                          </div>
+                        <button
+                          className="adminMenuBtn adminMenuBtnDanger"
+                          onClick={() => deleteCategory(selectedCat.id)}
+                          disabled={deletingCategoryId === selectedCat.id}
+                        >
+                          {deletingCategoryId === selectedCat.id ? "Brisanje..." : "Obriši"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                <section
+                  className={`adminMenuPanel ${
+                    mobileTab === "new"
+                      ? "is-mobile-section-visible"
+                      : "is-mobile-section-hidden"
+                  }`}
+                >
+                  <div className="adminMenuSectionHead">
+                    <h2 className="adminMenuSectionTitle">Dodaj novi artikal</h2>
+                    <span className="adminMenuMuted">
+                      {selectedCat ? selectedCat.name : "Odaberi kategoriju"}
+                    </span>
+                  </div>
+
+                  {!selectedCat ? (
+                    <div className="adminMenuEmpty">
+                      Odaberi kategoriju da bi dodao artikal.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="adminMenuCompactGrid">
+                        <div className="adminMenuField adminMenuFieldSpan2">
+                          <label className="adminMenuLabel">Naziv (BHS)</label>
+                          <input
+                            className="adminMenuInput"
+                            placeholder="npr. Palačinke Nutella"
+                            value={newItemName}
+                            onChange={(e) => setNewItemName(e.target.value)}
+                          />
                         </div>
 
-                        <div style={itemCardGrid}>
-                          <div>
-                            {draft.imageUrl ? (
+                        <div className="adminMenuField">
+                          <label className="adminMenuLabel">Cijena</label>
+                          <input
+                            className="adminMenuInput"
+                            placeholder="npr. 7.5"
+                            value={newItemPrice}
+                            onChange={(e) => setNewItemPrice(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="adminMenuField">
+                          <label className="adminMenuLabel">Slika artikla</label>
+                          <input
+                            className="adminMenuInput adminMenuFileInput"
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const base64 = await fileToBase64(file);
+                                setNewItemImage(base64);
+                              } catch {
+                                setErr("Upload slike nije uspio.");
+                              }
+                            }}
+                          />
+                          {newItemImage && (
+                            <div className="adminMenuUploadPreview">
                               <img
-                                src={draft.imageUrl}
-                                alt={draft.name || it.name}
-                                style={{
-                                  width: "100%",
-                                  height: 160,
-                                  objectFit: "cover",
-                                  borderRadius: 12,
-                                  border: "1px solid #2b3548",
-                                  background: "#0b0e13",
-                                }}
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  width: "100%",
-                                  height: 160,
-                                  borderRadius: 12,
-                                  border: "1px dashed #2b3548",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  color: "rgba(255,255,255,0.55)",
-                                  fontSize: 13,
-                                  textAlign: "center",
-                                  padding: 12,
-                                  boxSizing: "border-box",
-                                  background: "#0b0e13",
-                                }}
-                              >
-                                Nema slike
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <div style={itemEditorGrid}>
-                              <div>
-                                <label style={label}>Osnovni naziv (BHS)</label>
-                                <input
-                                  style={input}
-                                  value={draft.name}
-                                  placeholder="Osnovni naziv"
-                                  onChange={(e) => updateDraft(it.id, "name", e.target.value)}
-                                />
-                              </div>
-
-                              <div>
-                                <label style={label}>Cijena</label>
-                                <input
-                                  style={input}
-                                  value={draft.price}
-                                  placeholder="Cijena"
-                                  onChange={(e) => updateDraft(it.id, "price", e.target.value)}
-                                />
-                              </div>
-
-                              <div>
-                                <label style={label}>Engleski naziv</label>
-                                <input
-                                  style={input}
-                                  value={draft.name1}
-                                  placeholder="English"
-                                  onChange={(e) => updateDraft(it.id, "name1", e.target.value)}
-                                />
-                              </div>
-
-                              <div>
-                                <label style={label}>Njemački naziv</label>
-                                <input
-                                  style={input}
-                                  value={draft.name2}
-                                  placeholder="Deutsch"
-                                  onChange={(e) => updateDraft(it.id, "name2", e.target.value)}
-                                />
-                              </div>
-
-                              <div>
-                                <label style={label}>Italijanski naziv</label>
-                                <input
-                                  style={input}
-                                  value={draft.name3}
-                                  placeholder="Italiano"
-                                  onChange={(e) => updateDraft(it.id, "name3", e.target.value)}
-                                />
-                              </div>
-
-                              <div>
-                                <label style={label}>Francuski naziv</label>
-                                <input
-                                  style={input}
-                                  value={draft.name4}
-                                  placeholder="Français"
-                                  onChange={(e) => updateDraft(it.id, "name4", e.target.value)}
-                                />
-                              </div>
-                            </div>
-
-                            <div style={{ marginTop: 12 }}>
-                              <label style={label}>Image URL</label>
-                              <input
-                                style={input}
-                                value={draft.imageUrl}
-                                placeholder="https://... ili /images/..."
-                                onChange={(e) => updateDraft(it.id, "imageUrl", e.target.value)}
+                                src={newItemImage}
+                                alt="Preview"
+                                className="adminMenuPreviewImage"
                               />
                             </div>
-
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: 10,
-                                marginTop: 14,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <button
-                                style={btnPrimary}
-                                onClick={() => saveItem(it)}
-                                disabled={isSaving}
-                              >
-                                {isSaving ? "Čuvanje..." : "Sačuvaj artikal"}
-                              </button>
-
-                              <button
-                                style={btnDanger}
-                                onClick={() => deleteItem(it.id)}
-                                disabled={isDeleting}
-                              >
-                                {isDeleting ? "Brisanje..." : "Obriši artikal"}
-                              </button>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+
+                      <button
+                        type="button"
+                        className="adminMenuToggleBtn"
+                        onClick={() => setShowNewTranslations((v) => !v)}
+                      >
+                        {showNewTranslations ? "Sakrij prevode" : "Prikaži prevode"}
+                      </button>
+
+                      {showNewTranslations && (
+                        <div className="adminMenuTranslationsBox">
+                          <div className="adminMenuCompactGrid">
+                            <div className="adminMenuField">
+                              <label className="adminMenuLabel">English</label>
+                              <input
+                                className="adminMenuInput"
+                                value={newItemName1}
+                                onChange={(e) => setNewItemName1(e.target.value)}
+                              />
+                            </div>
+
+                            <div className="adminMenuField">
+                              <label className="adminMenuLabel">Deutsch</label>
+                              <input
+                                className="adminMenuInput"
+                                value={newItemName2}
+                                onChange={(e) => setNewItemName2(e.target.value)}
+                              />
+                            </div>
+
+                            <div className="adminMenuField">
+                              <label className="adminMenuLabel">Italiano</label>
+                              <input
+                                className="adminMenuInput"
+                                value={newItemName3}
+                                onChange={(e) => setNewItemName3(e.target.value)}
+                              />
+                            </div>
+
+                            <div className="adminMenuField">
+                              <label className="adminMenuLabel">Français</label>
+                              <input
+                                className="adminMenuInput"
+                                value={newItemName4}
+                                onChange={(e) => setNewItemName4(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="adminMenuActionRow">
+                        <button
+                          className="adminMenuBtn adminMenuBtnPrimary"
+                          onClick={createItem}
+                          disabled={isCreatingItem}
+                        >
+                          {isCreatingItem ? "Dodavanje..." : "Dodaj artikal"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </section>
+              </div>
+
+              <div className={`adminMenuRightColumn ${mobileTab === "items" ? "is-mobile-visible" : ""}`}>
+                <section className="adminMenuPanel">
+                  <div className="adminMenuSectionHead">
+                    <h2 className="adminMenuSectionTitle">Postojeći artikli</h2>
+                    <span className="adminMenuMuted">
+                      {selectedCat
+                        ? `${selectedCat.items?.length || 0} u kategoriji`
+                        : "Odaberi kategoriju"}
+                    </span>
+                  </div>
+
+                  {!selectedCat ? (
+                    <div className="adminMenuEmpty">Odaberi kategoriju iznad.</div>
+                  ) : (selectedCat.items || []).length === 0 ? (
+                    <div className="adminMenuEmpty">
+                      Još nema artikala u ovoj kategoriji.
+                    </div>
+                  ) : (
+                    <div className="adminMenuItemsList">
+                      {(selectedCat.items || []).map((it, index) => {
+                        const draft = getItemDraft(it);
+                        const isSaving = savingItemId === it.id;
+                        const isDeleting = deletingItemId === it.id;
+                        const isOpen = openItemId === it.id;
+
+                        return (
+                          <article key={it.id} className="adminMenuItemCard">
+                            <div className="adminMenuItemHeadCompact">
+                              <div>
+                                <div className="adminMenuItemIndex">
+                                  {index + 1}. {draft.name || it.name}
+                                </div>
+                                <div className="adminMenuItemMeta">ID: {it.id}</div>
+                              </div>
+
+                              <div className="adminMenuItemHeadRight">
+                                <div className="adminMenuPriceBadge">
+                                  {draft.price || it.price} KM
+                                </div>
+                                <button
+                                  type="button"
+                                  className="adminMenuToggleBtn adminMenuToggleBtnSmall"
+                                  onClick={() =>
+                                    setOpenItemId((prev) => (prev === it.id ? "" : it.id))
+                                  }
+                                >
+                                  {isOpen ? "Sakrij detalje" : "Uredi"}
+                                </button>
+                              </div>
+                            </div>
+
+                            {isOpen && (
+                              <>
+                                <div className="adminMenuItemEditorGrid">
+                                  <div className="adminMenuField adminMenuFieldSpan2">
+                                    <label className="adminMenuLabel">Naziv (BHS)</label>
+                                    <input
+                                      className="adminMenuInput"
+                                      value={draft.name}
+                                      onChange={(e) =>
+                                        updateDraft(it.id, "name", e.target.value)
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="adminMenuField">
+                                    <label className="adminMenuLabel">Cijena</label>
+                                    <input
+                                      className="adminMenuInput"
+                                      value={draft.price}
+                                      onChange={(e) =>
+                                        updateDraft(it.id, "price", e.target.value)
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="adminMenuField">
+                                    <label className="adminMenuLabel">Slika artikla</label>
+                                    <input
+                                      className="adminMenuInput adminMenuFileInput"
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        try {
+                                          const base64 = await fileToBase64(file);
+                                          updateDraft(it.id, "imageUrl", base64);
+                                        } catch {
+                                          setErr("Upload slike nije uspio.");
+                                        }
+                                      }}
+                                    />
+                                    {draft.imageUrl && (
+                                      <div className="adminMenuUploadPreview">
+                                        <img
+                                          src={draft.imageUrl}
+                                          alt={draft.name || it.name}
+                                          className="adminMenuPreviewImage"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="adminMenuTranslationsBox">
+                                  <div className="adminMenuCompactGrid">
+                                    <div className="adminMenuField">
+                                      <label className="adminMenuLabel">English</label>
+                                      <input
+                                        className="adminMenuInput"
+                                        value={draft.name1}
+                                        onChange={(e) =>
+                                          updateDraft(it.id, "name1", e.target.value)
+                                        }
+                                      />
+                                    </div>
+
+                                    <div className="adminMenuField">
+                                      <label className="adminMenuLabel">Deutsch</label>
+                                      <input
+                                        className="adminMenuInput"
+                                        value={draft.name2}
+                                        onChange={(e) =>
+                                          updateDraft(it.id, "name2", e.target.value)
+                                        }
+                                      />
+                                    </div>
+
+                                    <div className="adminMenuField">
+                                      <label className="adminMenuLabel">Italiano</label>
+                                      <input
+                                        className="adminMenuInput"
+                                        value={draft.name3}
+                                        onChange={(e) =>
+                                          updateDraft(it.id, "name3", e.target.value)
+                                        }
+                                      />
+                                    </div>
+
+                                    <div className="adminMenuField">
+                                      <label className="adminMenuLabel">Français</label>
+                                      <input
+                                        className="adminMenuInput"
+                                        value={draft.name4}
+                                        onChange={(e) =>
+                                          updateDraft(it.id, "name4", e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="adminMenuActionRow">
+                                  <button
+                                    className="adminMenuBtn adminMenuBtnPrimary"
+                                    onClick={() => saveItem(it)}
+                                    disabled={isSaving}
+                                  >
+                                    {isSaving ? "Čuvanje..." : "Sačuvaj"}
+                                  </button>
+
+                                  <button
+                                    className="adminMenuBtn adminMenuBtnDanger"
+                                    onClick={() => deleteItem(it.id)}
+                                    disabled={isDeleting}
+                                  >
+                                    {isDeleting ? "Brisanje..." : "Obriši"}
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

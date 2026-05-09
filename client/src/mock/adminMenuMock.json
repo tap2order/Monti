@@ -1,0 +1,60 @@
+[
+  {
+    "id": "breakfast",
+    "name": "Breakfast",
+    "items": [
+      {
+        "id": "omlet",
+        "name": "Omlet",
+        "name1": "Omelette",
+        "name2": "Omelett",
+        "name3": "Frittata",
+        "name4": "Omelette FR",
+        "imageUrl": "https://images.unsplash.com/photo-1510693206972-df098062cb71?auto=format&fit=crop&w=900&q=80",
+        "price": 12
+      },
+      {
+        "id": "pancakes",
+        "name": "Palačinke",
+        "name1": "Pancakes",
+        "name2": "Pfannkuchen",
+        "name3": "Pancake",
+        "name4": "Crêpes",
+        "imageUrl": "https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=900&q=80",
+        "price": 10
+      }
+    ]
+  },
+  {
+    "id": "drinks",
+    "name": "Drinks",
+    "items": [
+      {
+        "id": "orange-juice",
+        "name": "Cijeđena narandža",
+        "name1": "Fresh orange juice",
+        "name2": "Frischer Orangensaft",
+        "name3": "Spremuta d'arancia",
+        "name4": "Jus d'orange frais",
+        "imageUrl": "https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=900&q=80",
+        "price": 8
+      }
+    ]
+  },
+  {
+    "id": "desserts",
+    "name": "Desserts",
+    "items": [
+      {
+        "id": "cake",
+        "name": "Čokoladna torta",
+        "name1": "Chocolate cake",
+        "name2": "Schokoladenkuchen",
+        "name3": "Torta al cioccolato",
+        "name4": "Gâteau au chocolat",
+        "imageUrl": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80",
+        "price": 9
+      }
+    ]
+  }
+]

@@ -1,0 +1,471 @@
+.adminMenuPage {
+  min-height: 100vh;
+  padding: 16px;
+  color: #f3f4f6;
+  background: #111827;
+  box-sizing: border-box;
+}
+
+.adminMenuShell {
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+.adminMenuTopbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 4px 2px;
+}
+
+.adminMenuKicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.adminMenuTitle {
+  margin: 8px 0 0 0;
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.adminMenuSubtitle {
+  margin: 10px 0 0 0;
+  max-width: 680px;
+  color: #9ca3af;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.adminMenuPanel {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.adminMenuCategoriesPanel {
+  margin-bottom: 16px;
+}
+
+.adminMenuSectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.adminMenuSectionTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.adminMenuMuted {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.adminMenuToolbarGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.adminMenuInlineRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.adminMenuContentGrid {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.adminMenuLeftColumn,
+.adminMenuRightColumn {
+  display: grid;
+  gap: 16px;
+}
+
+.adminMenuField {
+  display: grid;
+  gap: 6px;
+}
+
+.adminMenuFieldSpan2 {
+  grid-column: span 2;
+}
+
+.adminMenuLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: #d1d5db;
+}
+
+.adminMenuInput,
+.adminMenuSelect {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border-radius: 12px;
+  border: 1px solid #4b5563;
+  background: #111827;
+  color: #f9fafb;
+  outline: none;
+  font-size: 14px;
+}
+
+.adminMenuInput::placeholder {
+  color: #6b7280;
+}
+
+.adminMenuInput:focus,
+.adminMenuSelect:focus {
+  border-color: #6b7280;
+}
+
+.adminMenuSelect {
+  appearance: none;
+}
+
+.adminMenuCategoryEdit {
+  display: grid;
+  gap: 14px;
+}
+
+.adminMenuCompactGrid,
+.adminMenuItemEditorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminMenuTranslationsBox {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #374151;
+  background: #111827;
+}
+
+.adminMenuToggleBtn {
+  margin-top: 14px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #4b5563;
+  background: #111827;
+  color: #e5e7eb;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform 0.16s ease, border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.adminMenuToggleBtn:hover {
+  transform: translateY(-1px);
+  background: #182131;
+}
+
+.adminMenuToggleBtnSmall {
+  min-height: 34px;
+  padding: 0 12px;
+  margin-top: 0;
+  font-size: 12px;
+}
+
+.adminMenuItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adminMenuItemCard {
+  border: 1px solid #374151;
+  border-radius: 16px;
+  background: #111827;
+  padding: 16px;
+}
+
+.adminMenuItemHeadCompact {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.adminMenuItemHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.adminMenuItemIndex {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.adminMenuItemMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.adminMenuPriceBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #374151;
+  color: #f3f4f6;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.adminMenuEmpty {
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.adminMenuActionRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.adminMenuBtn {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #4b5563;
+  background: #374151;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform 0.16s ease, background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.adminMenuBtn:hover {
+  transform: translateY(-1px);
+}
+
+.adminMenuBtn:active {
+  transform: scale(0.985);
+}
+
+.adminMenuBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.adminMenuBtnPrimary {
+  background: #e5e7eb;
+  color: #111827;
+  border-color: #d1d5db;
+}
+
+.adminMenuBtnPrimary:hover {
+  background: #f3f4f6;
+}
+
+.adminMenuBtnDanger {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #ffffff;
+}
+
+.adminMenuBtnDanger:hover {
+  background: #991b1b;
+}
+
+.adminMenuBtnGhost {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.adminMenuAlert {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.adminMenuAlertError {
+  border: 1px solid #7f1d1d;
+  background: #3b0d0d;
+  color: #fecaca;
+}
+
+.adminMenuAlertSuccess {
+  border: 1px solid #166534;
+  background: #0f2d1b;
+  color: #bbf7d0;
+}
+
+.adminMenuMobileTabs {
+  display: none;
+}
+
+.adminMenuFileInput {
+  padding: 10px;
+}
+
+.adminMenuUploadPreview {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  background: #111827;
+}
+
+.adminMenuPreviewImage {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #4b5563;
+}
+
+@media (max-width: 1100px) {
+  .adminMenuContentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .adminMenuToolbarGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .adminMenuCompactGrid,
+  .adminMenuItemEditorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminMenuFieldSpan2 {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .adminMenuPage {
+    padding: 14px;
+  }
+
+  .adminMenuTopbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adminMenuInlineRow {
+    grid-template-columns: 1fr;
+  }
+
+  .adminMenuPanel {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .adminMenuTitle {
+    font-size: 30px;
+  }
+
+  .adminMenuSubtitle {
+    font-size: 14px;
+  }
+
+  .adminMenuBtnGhost {
+    width: 100%;
+  }
+
+  .adminMenuActionRow {
+    flex-direction: column;
+  }
+
+  .adminMenuActionRow .adminMenuBtn {
+    width: 100%;
+  }
+
+  .adminMenuItemHeadCompact,
+  .adminMenuItemHeadRight {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .adminMenuMobileTabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .adminMenuMobileTab {
+    min-height: 42px;
+    border-radius: 12px;
+    border: 1px solid #374151;
+    background: #1f2937;
+    color: #e5e7eb;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .adminMenuMobileTab.is-active {
+    background: #e5e7eb;
+    color: #111827;
+    border-color: #d1d5db;
+  }
+
+  .adminMenuLeftColumn,
+  .adminMenuRightColumn {
+    display: block;
+  }
+
+  .is-mobile-section-hidden {
+    display: none;
+  }
+
+  .is-mobile-section-visible {
+    display: block;
+  }
+
+  .adminMenuRightColumn {
+    display: none;
+  }
+
+  .adminMenuRightColumn.is-mobile-visible {
+    display: block;
+  }
+}
