@@ -139,8 +139,8 @@ export default function AdminMenuPage() {
   // Ovdje samo biraj koju želiš koristiti
   // ---------------------------------------------------------
   async function loadMenu() {
-    await loadMenuMock();
-    // await loadMenuApi();
+    //await loadMenuMock();
+     await loadMenuApi();
   }
 
   useEffect(() => {
