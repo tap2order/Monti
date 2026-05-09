@@ -1,413 +1,332 @@
-/* ===========================
-   WaiterPage.css (Cafe Theme)
-   Full rewrite (mobile-first)
-   =========================== */
+:root {
+  --wp-bg: #0b0f14;
+  --wp-surface: rgba(255, 255, 255, 0.06);
+  --wp-border: rgba(255, 255, 255, 0.1);
+  --wp-text: rgba(255, 255, 255, 0.92);
+  --wp-muted: rgba(255, 255, 255, 0.66);
 
-:root{
-  --wp-bg:#0b0f14;
-  --wp-surface:rgba(255,255,255,.06);
-  --wp-surface2:rgba(255,255,255,.04);
-  --wp-border:rgba(255,255,255,.10);
-  --wp-text:rgba(255,255,255,.92);
-  --wp-muted:rgba(255,255,255,.66);
-  --wp-muted2:rgba(255,255,255,.46);
+  --wp-primary: #d7a86e;
+  --wp-primary2: #bb8b55;
+  --wp-danger: #ff5a68;
+  --wp-success: #35d07f;
 
-  --wp-primary:#d7a86e;
-  --wp-primary2:#bb8b55;
-  --wp-danger:#ff5a68;
-  --wp-success:#35d07f;
+  --wp-radius: 18px;
+  --wp-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  --wp-shadow-soft: 0 10px 25px rgba(0, 0, 0, 0.25);
 
-  --wp-radius:18px;
-  --wp-radius-sm:12px;
-  --wp-shadow:0 14px 40px rgba(0,0,0,.35);
-  --wp-shadow-soft:0 10px 25px rgba(0,0,0,.25);
-
-  --wp-font:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  --wp-font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* ===========================
-   Page
-   =========================== */
-.wp-page{
-  min-height:100vh;
-  font-family:var(--wp-font);
-  color:var(--wp-text);
+.wp-page {
+  min-height: 100vh;
+  font-family: var(--wp-font);
+  color: var(--wp-text);
   background:
-    radial-gradient(1200px 700px at 20% 10%, rgba(215,168,110,0.18), transparent 55%),
-    radial-gradient(900px 500px at 80% 0%, rgba(255,255,255,0.08), transparent 60%),
+    radial-gradient(1200px 700px at 20% 10%, rgba(215, 168, 110, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 80% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
     linear-gradient(180deg, #0b0f14 0%, #070a0e 100%);
-  padding:18px 14px 34px;
+  padding: 18px 14px 34px;
 }
 
-.wp-shell{
-  max-width:1100px;
-  margin:0 auto;
+.wp-shell {
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-/* ===========================
-   Top bar (mobile-first)
-   =========================== */
-.wp-top{
-  /* On mobile we remove sticky (it makes it feel tight while scrolling) */
-  position: relative;
-  top: auto;
-  z-index: 20;
-
-  display:flex;
+.wp-top {
+  display: flex;
   flex-direction: column;
-  gap:18px;
-
-  padding:22px 18px;
-  border:1px solid var(--wp-border);
-  background:rgba(11, 15, 20, 0.72);
-  backdrop-filter:blur(10px);
-  border-radius:var(--wp-radius);
-  box-shadow:var(--wp-shadow-soft);
+  gap: 18px;
+  padding: 22px 18px;
+  border: 1px solid var(--wp-border);
+  background: rgba(11, 15, 20, 0.72);
+  backdrop-filter: blur(10px);
+  border-radius: var(--wp-radius);
+  box-shadow: var(--wp-shadow-soft);
 }
 
-.wp-titleRow{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
+.wp-topMain {
+  display: grid;
+  gap: 14px;
 }
 
-.wp-title{
-  margin:0;
-  font-size:26px;
-  line-height:1.25;
-  letter-spacing:-0.02em;
+.wp-titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.wp-pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  color:var(--wp-muted);
-  border:1px solid rgba(255,255,255,0.14);
-  padding:6px 10px;
-  border-radius:999px;
-  background:rgba(255,255,255,0.04);
+.wp-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
-/* On phones: stack actions for big tap targets */
-.wp-actions{
-  display:grid;
+.wp-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--wp-muted);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.wp-topMeta {
+  color: var(--wp-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.wp-actions {
+  display: grid;
   grid-template-columns: 1fr;
-  gap:12px;
+  gap: 12px;
 }
 
-.wp-right{
-  display:grid;
+.wp-alert {
+  margin: 14px 0 0;
+  border: 1px solid var(--wp-border);
+  background: var(--wp-surface);
+  backdrop-filter: blur(10px);
+  border-radius: var(--wp-radius);
+  padding: 12px 14px;
+  box-shadow: var(--wp-shadow-soft);
+}
+
+.wp-alert--warn {
+  border-color: rgba(255, 206, 93, 0.35);
+  background: rgba(255, 206, 93, 0.1);
+}
+
+.wp-alert--error {
+  border-color: rgba(255, 90, 104, 0.35);
+  background: rgba(255, 90, 104, 0.08);
+}
+
+.wp-alertTitle {
+  font-weight: 950;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.wp-alertBody {
+  font-size: 14px;
+  color: var(--wp-muted);
+  white-space: pre-wrap;
+}
+
+.wp-section {
+  margin-top: 18px;
+}
+
+.wp-sectionHead {
+  margin-bottom: 10px;
+}
+
+.wp-h2 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.wp-empty {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 16px;
+  color: var(--wp-muted);
+  font-size: 14px;
+}
+
+.wp-grid {
+  display: grid;
+  gap: 12px;
   grid-template-columns: 1fr;
-  gap:10px;
-
-  padding-top:16px;
-  border-top:1px solid rgba(255,255,255,0.08);
 }
 
-.wp-label{
-  color:var(--wp-muted);
-  font-weight:900;
-  font-size:12px;
+.wp-card {
+  border: 1px solid var(--wp-border);
+  background: var(--wp-surface);
+  backdrop-filter: blur(10px);
+  border-radius: var(--wp-radius);
+  box-shadow: var(--wp-shadow);
+  overflow: hidden;
 }
 
-.wp-select{
-  width:100%;
-  padding:14px 14px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,0.16);
-  background:rgba(255,255,255,0.06);
-  color:var(--wp-text);
-  font-weight:900;
-  outline:none;
+.wp-cardInner {
+  padding: 14px;
 }
 
-.wp-select:focus{
-  border-color: rgba(215,168,110,0.55);
-  box-shadow: 0 0 0 4px rgba(215,168,110,0.12);
+.wp-cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.wp-select option{
-  color:#111;
+.wp-cardTitle {
+  font-weight: 950;
+  letter-spacing: -0.01em;
+  font-size: 15px;
 }
 
-.wp-waiterName{
-  color:var(--wp-muted);
-  font-weight:900;
-  font-size:13px;
+.wp-itemsCount {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--wp-muted);
 }
 
-/* ===========================
-   Alerts
-   =========================== */
-.wp-alert{
-  margin:14px 0 0;
-  border:1px solid var(--wp-border);
-  background:var(--wp-surface);
-  backdrop-filter:blur(10px);
-  border-radius:var(--wp-radius);
-  padding:12px 14px;
-  box-shadow:var(--wp-shadow-soft);
+.wp-items {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+  display: grid;
+  gap: 10px;
 }
 
-.wp-alert--warn{
-  border-color:rgba(255, 206, 93, 0.35);
-  background:rgba(255, 206, 93, 0.10);
-}
-
-.wp-alert--error{
-  border-color:rgba(255, 90, 104, 0.35);
-  background:rgba(255, 90, 104, 0.08);
-}
-
-.wp-alertTitle{
-  font-weight:950;
-  font-size:13px;
-  margin-bottom:4px;
-}
-
-.wp-alertBody{
-  font-size:14px;
-  color:var(--wp-muted);
-  white-space:pre-wrap;
-}
-
-/* ===========================
-   Sections
-   =========================== */
-.wp-section{
-  margin-top:16px;
-  padding:0;
-}
-
-.wp-h2{
-  margin:0 0 8px;
-  font-size:16px;
-  letter-spacing:-0.01em;
-}
-
-.wp-sub{
-  margin:0 0 10px;
-  color:var(--wp-muted);
-  font-size:13px;
-  line-height:1.4;
-}
-
-/* ===========================
-   Grid
-   =========================== */
-.wp-grid{
-  display:grid;
-  gap:12px;
-  grid-template-columns: 1fr; /* mobile */
-}
-
-/* ===========================
-   Cards
-   =========================== */
-.wp-card{
-  border:1px solid var(--wp-border);
-  background:var(--wp-surface);
-  backdrop-filter:blur(10px);
-  border-radius:var(--wp-radius);
-  box-shadow:var(--wp-shadow);
-  overflow:hidden;
-}
-
-.wp-cardInner{
-  padding:12px 14px;
-}
-
-.wp-cardTop{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  gap:12px;
-}
-
-.wp-cardTitle{
-  font-weight:950;
-  letter-spacing:-0.01em;
-  font-size:14px;
-}
-
-.wp-meta{
-  font-size:12px;
-  color:var(--wp-muted);
-  margin-top:4px;
-}
-
-/* Items list inside order */
-.wp-items{
-  margin-top:10px;
-  border-top:1px solid rgba(255,255,255,0.08);
-  padding-top:10px;
-  display:grid;
-  gap:10px;
-}
-
-/* Better for phones: stable columns */
-.wp-itemRow{
-  display:grid;
+.wp-itemRow {
+  display: grid;
   grid-template-columns: 1fr auto;
-  gap:10px;
-  align-items:start;
+  gap: 10px;
+  align-items: start;
 }
 
-.wp-itemName{
-  font-weight:900;
-  font-size:13px;
+.wp-itemName {
+  font-weight: 800;
+  font-size: 14px;
 }
 
-.wp-note{
-  font-size:12px;
-  color:var(--wp-muted);
-  margin-top:3px;
+.wp-note {
+  font-size: 12px;
+  color: var(--wp-muted);
+  margin-top: 4px;
 }
 
-/* ===========================
-   Buttons
-   =========================== */
-.wp-btn{
-  border:1px solid rgba(255,255,255,0.14);
-  background:rgba(255,255,255,0.06);
-  color:var(--wp-text);
-  padding:14px 14px;              /* bigger tap target */
-  border-radius:16px;
-  cursor:pointer;
-  font-weight:900;
-  transition:transform 120ms ease, background 120ms ease, border-color 120ms ease, opacity 120ms ease;
-  user-select:none;
+.wp-itemPrice {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--wp-text);
+  white-space: nowrap;
 }
 
-.wp-btn:hover{
-  transform:translateY(-1px);
-  background:rgba(255,255,255,0.09);
+.wp-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--wp-text);
+  padding: 13px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-weight: 900;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease,
+    opacity 120ms ease;
+  user-select: none;
 }
 
-.wp-btn:active{
+.wp-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.wp-btn:active {
   transform: scale(0.99);
 }
 
-.wp-btn:disabled{
-  opacity:.55;
-  cursor:not-allowed;
-  transform:none;
+.wp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.wp-btn--primary{
-  border-color:rgba(215,168,110,0.55);
-  background:linear-gradient(180deg, rgba(215,168,110,0.95), rgba(187,139,85,0.92));
-  color:#1a120a;
+.wp-btn--primary {
+  border-color: rgba(215, 168, 110, 0.55);
+  background: linear-gradient(180deg, rgba(215, 168, 110, 0.95), rgba(187, 139, 85, 0.92));
+  color: #1a120a;
 }
 
-.wp-btn--success{
-  border-color:rgba(53,208,127,0.45);
-  background:rgba(53,208,127,0.14);
+.wp-btn--success {
+  border-color: rgba(53, 208, 127, 0.45);
+  background: rgba(53, 208, 127, 0.14);
 }
 
-.wp-btn--danger{
-  border-color:rgba(255,90,104,0.45);
-  background:rgba(255,90,104,0.14);
+.wp-btn--danger {
+  border-color: rgba(255, 90, 104, 0.45);
+  background: rgba(255, 90, 104, 0.14);
 }
 
-.wp-btn--ghost{
-  border-color:rgba(255,255,255,0.16);
-  background:rgba(255,255,255,0.06);
+.wp-btn--ghost {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-/* If you replaced inline style with className="wp-cardBtns" */
-.wp-cardBtns{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
+.wp-cardBtns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.wp-cardBtns .wp-btn{
-  min-width:120px;
+.wp-cardBtns .wp-btn {
+  min-width: 110px;
 }
 
-/* ===========================
-   Tablet+
-   =========================== */
-@media (min-width: 640px){
-  .wp-page{
-    padding:22px 16px 38px;
+@media (min-width: 640px) {
+  .wp-page {
+    padding: 22px 16px 38px;
   }
 
-  /* On bigger screens sticky is nice */
-  .wp-top{
-    position: sticky;
-    top: 12px;
-
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap:16px;
-    padding:24px 22px;
+  .wp-top {
+    padding: 24px 22px;
   }
 
-  .wp-title{
-    font-size:34px;
-    line-height:1.12;
+  .wp-title {
+    font-size: 34px;
+    line-height: 1.1;
   }
 
-  /* Buttons back to row */
-  .wp-actions{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-top:10px;
+  .wp-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
-  /* Right area back to inline layout */
-  .wp-right{
-    display:flex;
-    align-items:center;
-    justify-content:flex-end;
-    gap:10px;
-    flex-wrap:wrap;
-
-    border-top:none;
-    padding-top:0;
-    min-width:260px;
+  .wp-btn {
+    padding: 12px 14px;
+    border-radius: 14px;
   }
 
-  .wp-select{
-    width:auto;
-    padding:12px 12px;
-    border-radius:14px;
-  }
-
-  .wp-btn{
-    padding:12px 12px;
-    border-radius:14px;
-  }
-
-  .wp-grid{
+  .wp-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .wp-section{
-    padding:0 6px;
-  }
 }
 
-/* ===========================
-   Desktop
-   =========================== */
-@media (min-width: 1024px){
-  .wp-grid{
+@media (min-width: 1024px) {
+  .wp-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* ===========================
-   Tiny screens
-   =========================== */
-@media (max-width: 360px){
-  .wp-title{ font-size: 22px; }
+@media (max-width: 640px) {
+  .wp-cardTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wp-cardBtns {
+    justify-content: stretch;
+  }
+
+  .wp-cardBtns .wp-btn,
+  .wp-cardTop .wp-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .wp-title {
+    font-size: 22px;
+  }
 }

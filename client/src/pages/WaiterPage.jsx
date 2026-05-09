@@ -8,7 +8,6 @@ export default function WaiterPage() {
   const socketRef = useRef(null);
   const navigate = useNavigate();
 
-  // SOUNDS
   const orderSoundRef = useRef(null);
   const callSoundRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -18,13 +17,11 @@ export default function WaiterPage() {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
-  // Data
   const [waiters, setWaiters] = useState([]);
   const [orders, setOrders] = useState([]);
   const [calls, setCalls] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
 
-  // UI
   const [err, setErr] = useState("");
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [loadingCalls, setLoadingCalls] = useState(true);
@@ -47,6 +44,7 @@ export default function WaiterPage() {
       setSoundEnabled(false);
       return;
     }
+
     try {
       const a = orderSoundRef.current;
       if (!a) return;
@@ -63,7 +61,6 @@ export default function WaiterPage() {
     }
   };
 
-  // ---------- Loaders ----------
   const loadWaiters = async () => {
     const res = await fetch(`${api}/waiters`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -105,6 +102,7 @@ export default function WaiterPage() {
       setLoadingMyOrders(false);
       return;
     }
+
     try {
       const res = await fetch(`${api}/orders/claimed/${wid}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -134,7 +132,6 @@ export default function WaiterPage() {
     }
   };
 
-  // ---------- Mount ----------
   useEffect(() => {
     setErr("");
 
@@ -157,9 +154,13 @@ export default function WaiterPage() {
       const a = orderSoundRef.current;
       if (!a) return;
 
-      try { a.currentTime = 0; } catch {}
+      try {
+        a.currentTime = 0;
+      } catch {}
       a.play().catch(() => {
-        try { window.navigator.vibrate?.(80); } catch {}
+        try {
+          window.navigator.vibrate?.(80);
+        } catch {}
       });
     });
 
@@ -181,7 +182,9 @@ export default function WaiterPage() {
       setCalls((prev) => [call, ...prev]);
       if (soundEnabledRef.current) {
         callSoundRef.current?.play().catch(() => {
-          try { window.navigator.vibrate?.(120); } catch {}
+          try {
+            window.navigator.vibrate?.(120);
+          } catch {}
         });
       }
     });
@@ -221,17 +224,15 @@ export default function WaiterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
 
-  // ---------- When waiter changes, reload my orders ----------
   useEffect(() => {
     setLoadingMyOrders(true);
     loadMyOrders(selectedWaiterId).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWaiterId]);
 
-  // ---------- Actions ----------
   const claimOrder = async (orderId) => {
     setErr("");
-    if (!waiterId) return setErr("Prvo odaberite osoblje.");
+    if (!waiterId) return setErr("Nema aktivnog osoblja.");
 
     try {
       const res = await fetch(`${api}/orders/${orderId}/claim`, {
@@ -252,7 +253,7 @@ export default function WaiterPage() {
 
   const handleCall = async (callId) => {
     setErr("");
-    if (!waiterId) return setErr("Prvo odaberite osoblje.");
+    if (!waiterId) return setErr("Nema aktivnog osoblja.");
 
     try {
       const res = await fetch(`${api}/calls/${callId}/handle`, {
@@ -283,29 +284,38 @@ export default function WaiterPage() {
     <div className="wp-page">
       <div className="wp-shell">
         <div className="wp-top">
-          <div>
+          <div className="wp-topMain">
             <div className="wp-titleRow">
-              <h1 className="wp-title">Kontrolna ploča osoblja</h1>
-              <span className="wp-pill">{soundEnabled ? "Zvuk ✅" : "Zvuk isključen"}</span>
+              <h1 className="wp-title">Dashboard za osoblje</h1>
+              <span className="wp-pill">{soundEnabled ? "Zvuk uključen" : "Zvuk isključen"}</span>
+            </div>
+
+            <div className="wp-topMeta">
+              Aktivno osoblje: {waiterName || "Nije pronađeno aktivno osoblje"}
             </div>
 
             <div className="wp-actions">
-              <button className="wp-btn wp-btn--ghost" onClick={() => orderSoundRef.current?.play().catch(() => {})}>
+             {/*  <button
+                className="wp-btn wp-btn--ghost"
+                onClick={() => orderSoundRef.current?.play().catch(() => {})}
+              >
                 Testiraj zvuk
-              </button>
+              </button> */}
+
               <button className="wp-btn wp-btn--primary" onClick={toggleSound}>
                 {soundEnabled ? "Isključi zvuk" : "Uključi zvuk"}
               </button>
-              <button
+
+              {/* <button
                 className="wp-btn wp-btn--ghost"
                 onClick={() => navigate("/pick-waiter", { state: { from: "/waiter" } })}
               >
                 Otvori ličnu stranicu →
-              </button>
+              </button> */}
             </div>
           </div>
 
-          <div className="wp-right">
+          {/* <div className="wp-right">
             <span className="wp-label">Osoblje:</span>
             <select
               className="wp-select"
@@ -325,20 +335,20 @@ export default function WaiterPage() {
                 </option>
               ))}
             </select>
-
-            {waiterName ? <span className="wp-waiterName">{waiterName}</span> : null}
-          </div>
+          </div> */}
 
           <audio ref={orderSoundRef} src="/sounds/new-order.mp3" preload="auto" />
           <audio ref={callSoundRef} src="/sounds/new-call.mp3" preload="auto" />
         </div>
 
-        {!hasWaiter && (
+        {/* {!hasWaiter && (
           <div className="wp-alert wp-alert--warn">
-            <div className="wp-alertTitle">Osoblje nije odabrano</div>
-            <div className="wp-alertBody">Molimo odaberite člana osoblja za korištenje kontrolne ploče.</div>
+            <div className="wp-alertTitle">Aktivno osoblje nije pronađeno</div>
+            <div className="wp-alertBody">
+              Sistem koristi prvog aktivnog člana osoblja. Trenutno nema dostupnog aktivnog osoblja.
+            </div>
           </div>
-        )}
+        )} */}
 
         {err && (
           <div className="wp-alert wp-alert--error">
@@ -347,14 +357,15 @@ export default function WaiterPage() {
           </div>
         )}
 
-        {/* CALLS */}
         <div className="wp-section">
-          <h2 className="wp-h2">Pozivi</h2>
+          <div className="wp-sectionHead">
+            <h2 className="wp-h2">Pozivi</h2>
+          </div>
 
           {loadingCalls ? (
-            <div className="wp-sub">Učitavanje poziva…</div>
+            <div className="wp-empty">Učitavanje…</div>
           ) : calls.length === 0 ? (
-            <div className="wp-sub">Nema otvorenih poziva.</div>
+            <div className="wp-empty">Nema otvorenih poziva.</div>
           ) : (
             <div className="wp-grid">
               {calls.map((c) => (
@@ -362,10 +373,10 @@ export default function WaiterPage() {
                   <div className="wp-cardInner">
                     <div className="wp-cardTop">
                       <div>
-                        <div className="wp-cardTitle">
-                          Soba {c.tableId} — {c.type === "bill" ? "🧾 Zahtjev za račun" : "🔔 Zahtjev za pomoć"}
+                        <div className="wp-cardTitle">Soba {c.tableId}</div>
+                        <div className="wp-meta">
+                          {c.type === "bill" ? "Zahtjev za račun" : "Zahtjev za pomoć"}
                         </div>
-                        <div className="wp-meta">{new Date(c.createdAt).toLocaleString()}</div>
                       </div>
 
                       <button
@@ -383,17 +394,15 @@ export default function WaiterPage() {
           )}
         </div>
 
-        {/* UNCLAIMED ORDERS */}
         <div className="wp-section">
-          <h2 className="wp-h2">Neprihvaćene narudžbe</h2>
-          <p className="wp-sub">
-            Nove narudžbe se pojavljuju ovdje. Kliknite <b>Preuzmi</b> da preuzmete odgovornost.
-          </p>
+          <div className="wp-sectionHead">
+            <h2 className="wp-h2">Nove narudžbe</h2>
+          </div>
 
           {loadingOrders ? (
-            <div className="wp-sub">Učitavanje narudžbi…</div>
+            <div className="wp-empty">Učitavanje…</div>
           ) : orders.length === 0 ? (
-            <div className="wp-sub">Nema neprihvaćenih narudžbi.</div>
+            <div className="wp-empty">Nema novih narudžbi.</div>
           ) : (
             <div className="wp-grid">
               {orders.map((o) => (
@@ -402,8 +411,7 @@ export default function WaiterPage() {
                     <div className="wp-cardTop">
                       <div>
                         <div className="wp-cardTitle">Soba {o.tableId}</div>
-                        <div className="wp-meta">{new Date(o.createdAt).toLocaleString()}</div>
-                        <div className="wp-meta">ID narudžbe: {o.id}</div>
+                        <div className="wp-itemsCount">{o.items.length} stavki</div>
                       </div>
 
                       <button
@@ -422,9 +430,9 @@ export default function WaiterPage() {
                             <div className="wp-itemName">
                               {it.name} × {it.qty}
                             </div>
-                            {it.note ? <div className="wp-note">Napomena: {it.note}</div> : null}
+                            {it.note ? <div className="wp-note">{it.note}</div> : null}
                           </div>
-                          <div>{(it.price * it.qty).toFixed(2)} KM</div>
+                          <div className="wp-itemPrice">{(it.price * it.qty).toFixed(2)} KM</div>
                         </div>
                       ))}
                     </div>
@@ -435,14 +443,15 @@ export default function WaiterPage() {
           )}
         </div>
 
-        {/* MY ORDERS */}
         <div className="wp-section">
-          <h2 className="wp-h2">Moje narudžbe</h2>
+          <div className="wp-sectionHead">
+            <h2 className="wp-h2">Preuzete narudžbe</h2>
+          </div>
 
           {loadingMyOrders ? (
-            <div className="wp-sub">Učitavanje mojih narudžbi…</div>
+            <div className="wp-empty">Učitavanje…</div>
           ) : myOrders.length === 0 ? (
-            <div className="wp-sub">Još nema preuzetih narudžbi.</div>
+            <div className="wp-empty">Nema preuzetih narudžbi.</div>
           ) : (
             <div className="wp-grid">
               {myOrders.map((o) => (
@@ -451,10 +460,7 @@ export default function WaiterPage() {
                     <div className="wp-cardTop">
                       <div>
                         <div className="wp-cardTitle">Soba {o.tableId}</div>
-                        <div className="wp-meta">
-                          Preuzeto u {o.claimedAt ? new Date(o.claimedAt).toLocaleString() : "—"}
-                        </div>
-                        <div className="wp-meta">ID narudžbe: {o.id}</div>
+                        <div className="wp-itemsCount">{o.items.length} stavki</div>
                       </div>
 
                       <div className="wp-cardBtns">
@@ -477,9 +483,9 @@ export default function WaiterPage() {
                             <div className="wp-itemName">
                               {it.name} × {it.qty}
                             </div>
-                            {it.note ? <div className="wp-note">Napomena: {it.note}</div> : null}
+                            {it.note ? <div className="wp-note">{it.note}</div> : null}
                           </div>
-                          <div>{(it.price * it.qty).toFixed(2)} KM</div>
+                          <div className="wp-itemPrice">{(it.price * it.qty).toFixed(2)} KM</div>
                         </div>
                       ))}
                     </div>
@@ -489,7 +495,6 @@ export default function WaiterPage() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
