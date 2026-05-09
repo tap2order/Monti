@@ -5,10 +5,20 @@ const { Server } = require("socket.io");
 const { PrismaClient } = require("@prisma/client");
 const crypto = require("crypto");
 
+require("dotenv").config();
+
 const app = express();
 const prisma = new PrismaClient();
 
 const PUBLIC_CLIENT_URL = process.env.PUBLIC_CLIENT_URL || "https://demo.tap2order.ba";
+
+const ADMIN_USER = process.env.ADMIN_USER;
+const ADMIN_PASS = process.env.ADMIN_PASS;
+
+if (!ADMIN_USER || !ADMIN_PASS) {
+  console.error("Missing required ADMIN_USER or ADMIN_PASS environment variables.");
+  process.exit(1);
+}
 
 const allowedOrigins = [
   PUBLIC_CLIENT_URL,
@@ -62,8 +72,8 @@ async function requireValidTable(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-  const user = process.env.ADMIN_USER || "admin";
-  const pass = process.env.ADMIN_PASS || "admin";
+  const user = ADMIN_USER;
+  const pass = ADMIN_PASS;
 
   const h = req.headers.authorization || "";
   if (!h.startsWith("Basic ")) {
