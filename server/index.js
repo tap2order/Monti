@@ -98,6 +98,56 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+function getRequestWaiterId(req) {
+  const value = req.headers["x-waiter-id"];
+  const waiterId = Number(value);
+  return Number.isInteger(waiterId) ? waiterId : null;
+}
+
+async function requireCallManagerAuth(req, res, next) {
+  const h = req.headers.authorization || "";
+
+  if (h.startsWith("Basic ")) {
+    const base64 = h.slice("Basic ".length);
+    let decoded = "";
+    try {
+      decoded = Buffer.from(base64, "base64").toString("utf8");
+    } catch {
+      return res.status(401).json({ error: "invalid auth" });
+    }
+
+    const [u, p] = decoded.split(":");
+    if (u === ADMIN_USER && p === ADMIN_PASS) {
+      req.callManager = { type: "admin" };
+      return next();
+    }
+
+    return res.status(401).json({ error: "invalid admin credentials" });
+  }
+
+  const waiterId = getRequestWaiterId(req);
+  if (!waiterId) {
+    return res.status(401).json({ error: "staff auth required" });
+  }
+
+  try {
+    const waiter = await prisma.waiter.findUnique({
+      where: { id: waiterId },
+      select: { id: true, isActive: true },
+    });
+
+    if (!waiter || !waiter.isActive) {
+      return res.status(403).json({ error: "staff access forbidden" });
+    }
+
+    req.callManager = { type: "waiter", waiterId };
+    next();
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "server error" });
+  }
+}
+
 /* ---------- HTTP server + Socket.IO ---------- */
 const PORT = process.env.PORT || 4000;
 const server = http.createServer(app);
@@ -515,7 +565,7 @@ app.get("/tables/:tableId", async (req, res) => {
   }
 });
 
-app.get("/calls/open", async (req, res) => {
+app.get("/calls/open", requireCallManagerAuth, async (req, res) => {
   try {
     const data = await prisma.call.findMany({
       where: { status: "OPEN" },
@@ -528,13 +578,17 @@ app.get("/calls/open", async (req, res) => {
   }
 });
 
-app.patch("/calls/:callId/handle", async (req, res) => {
+app.patch("/calls/:callId/handle", requireCallManagerAuth, async (req, res) => {
   try {
     const { callId } = req.params;
     const waiterId = Number(req.body.waiterId);
 
     if (!Number.isInteger(waiterId)) {
       return res.status(400).json({ error: "valid waiterId is required" });
+    }
+
+    if (req.callManager?.type === "waiter" && req.callManager.waiterId !== waiterId) {
+      return res.status(403).json({ error: "staff access forbidden" });
     }
 
     const call = await prisma.call.findUnique({ where: { id: callId } });
@@ -811,7 +865,19 @@ app.get("/api/admin/tables/:tableId/orders", async (req, res) => {
 });
 
 /* ---------- Start server ---------- */
-server.listen(PORT, "127.0.0.1", () => {
-  console.log("Server running on port", PORT);
-});
+if (require.main === module) {
+  server.listen(PORT, "127.0.0.1", () => {
+    console.log("Server running on port", PORT);
+  });
+}
+
+module.exports = {
+  app,
+  server,
+  io,
+  prisma,
+  requireAdmin,
+  requireValidTable,
+  requireCallManagerAuth,
+};
 
