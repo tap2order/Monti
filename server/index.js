@@ -104,7 +104,7 @@ function getRequestWaiterId(req) {
   return Number.isInteger(waiterId) ? waiterId : null;
 }
 
-async function requireCallManagerAuth(req, res, next) {
+async function requireStaffOrAdminAuth(req, res, next) {
   const h = req.headers.authorization || "";
 
   if (h.startsWith("Basic ")) {
@@ -118,7 +118,7 @@ async function requireCallManagerAuth(req, res, next) {
 
     const [u, p] = decoded.split(":");
     if (u === ADMIN_USER && p === ADMIN_PASS) {
-      req.callManager = { type: "admin" };
+      req.staffAuth = { type: "admin" };
       return next();
     }
 
@@ -140,12 +140,28 @@ async function requireCallManagerAuth(req, res, next) {
       return res.status(403).json({ error: "staff access forbidden" });
     }
 
-    req.callManager = { type: "waiter", waiterId };
+    req.staffAuth = { type: "waiter", waiterId };
     next();
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "server error" });
   }
+}
+
+function requireCallManagerAuth(req, res, next) {
+  requireStaffOrAdminAuth(req, res, () => {
+    req.callManager = req.staffAuth;
+    next();
+  });
+}
+
+function requireMatchingWaiterOrAdmin(req, res, waiterId) {
+  if (req.staffAuth?.type === "waiter" && req.staffAuth.waiterId !== waiterId) {
+    res.status(403).json({ error: "staff access forbidden" });
+    return false;
+  }
+
+  return true;
 }
 
 /* ---------- HTTP server + Socket.IO ---------- */
@@ -392,7 +408,7 @@ app.post("/orders", requireValidTable, async (req, res) => {
   }
 });
 
-app.get("/orders/unclaimed", async (req, res) => {
+app.get("/orders/unclaimed", requireStaffOrAdminAuth, async (req, res) => {
   try {
     const data = await prisma.order.findMany({
       where: { status: "UNCLAIMED" },
@@ -407,7 +423,7 @@ app.get("/orders/unclaimed", async (req, res) => {
   }
 });
 
-app.patch("/orders/:orderId/claim", async (req, res) => {
+app.patch("/orders/:orderId/claim", requireStaffOrAdminAuth, async (req, res) => {
   try {
     const { orderId } = req.params;
     const waiterId = Number(req.body.waiterId);
@@ -415,6 +431,8 @@ app.patch("/orders/:orderId/claim", async (req, res) => {
     if (!Number.isInteger(waiterId)) {
       return res.status(400).json({ error: "valid waiterId is required" });
     }
+
+    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
 
     const result = await prisma.order.updateMany({
       where: { id: String(orderId), status: "UNCLAIMED" },
@@ -444,7 +462,7 @@ app.patch("/orders/:orderId/claim", async (req, res) => {
   }
 });
 
-app.post("/orders/:id/unclaim", async (req, res) => {
+app.post("/orders/:id/unclaim", requireStaffOrAdminAuth, async (req, res) => {
   try {
     const orderId = String(req.params.id);
     const waiterId = Number(req.body.waiterId);
@@ -452,6 +470,8 @@ app.post("/orders/:id/unclaim", async (req, res) => {
     if (!Number.isInteger(waiterId)) {
       return res.status(400).json({ error: "valid waiterId is required" });
     }
+
+    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
 
     const result = await prisma.order.updateMany({
       where: {
@@ -486,12 +506,14 @@ app.post("/orders/:id/unclaim", async (req, res) => {
   }
 });
 
-app.get("/orders/claimed/:waiterId", async (req, res) => {
+app.get("/orders/claimed/:waiterId", requireStaffOrAdminAuth, async (req, res) => {
   try {
     const waiterId = Number(req.params.waiterId);
     if (!Number.isInteger(waiterId)) {
       return res.status(400).json({ error: "valid waiterId is required" });
     }
+
+    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
 
     const data = await prisma.order.findMany({
       where: { status: "CLAIMED", claimedById: waiterId },
@@ -506,13 +528,20 @@ app.get("/orders/claimed/:waiterId", async (req, res) => {
   }
 });
 
-app.delete("/orders/:orderId", async (req, res) => {
+app.delete("/orders/:orderId", requireStaffOrAdminAuth, async (req, res) => {
   try {
     const orderId = String(req.params.orderId);
 
     const existing = await prisma.order.findUnique({ where: { id: orderId } });
     if (!existing) {
       return res.json({ success: true, orderId, alreadyDeleted: true });
+    }
+
+    if (
+      req.staffAuth?.type === "waiter" &&
+      existing.claimedById !== req.staffAuth.waiterId
+    ) {
+      return res.status(403).json({ error: "not your order" });
     }
 
     await prisma.order.delete({ where: { id: orderId } });
@@ -525,7 +554,7 @@ app.delete("/orders/:orderId", async (req, res) => {
   }
 });
 
-app.post("/orders/:id/complete", async (req, res) => {
+app.post("/orders/:id/complete", requireStaffOrAdminAuth, async (req, res) => {
   try {
     const orderId = String(req.params.id);
     const waiterId = Number(req.body.waiterId);
@@ -533,6 +562,8 @@ app.post("/orders/:id/complete", async (req, res) => {
     if (!Number.isInteger(waiterId)) {
       return res.status(400).json({ error: "valid waiterId is required" });
     }
+
+    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
 
     const result = await prisma.order.updateMany({
       where: {
@@ -940,6 +971,7 @@ module.exports = {
   prisma,
   requireAdmin,
   requireValidTable,
+  requireStaffOrAdminAuth,
   requireCallManagerAuth,
 };
 
