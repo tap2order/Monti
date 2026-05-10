@@ -475,6 +475,49 @@ app.delete("/orders/:orderId", async (req, res) => {
   }
 });
 
+app.post("/orders/:id/complete", async (req, res) => {
+  try {
+    const orderId = String(req.params.id);
+    const waiterId = Number(req.body.waiterId);
+
+    if (!Number.isInteger(waiterId)) {
+      return res.status(400).json({ error: "valid waiterId is required" });
+    }
+
+    const result = await prisma.order.updateMany({
+      where: {
+        id: orderId,
+        status: "CLAIMED",
+        claimedById: waiterId,
+      },
+      data: {
+        status: "COMPLETED",
+        completedAt: new Date(),
+      },
+    });
+
+    if (result.count === 0) {
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!order) return res.status(404).json({ error: "order not found" });
+      if (order.status !== "CLAIMED") {
+        return res.status(409).json({ error: "order is not claimed" });
+      }
+      return res.status(403).json({ error: "not your order" });
+    }
+
+    const updated = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    io.emit("order:updated", updated);
+    res.json(updated);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "server error" });
+  }
+});
+
 /* =========================
    CALLS (Prisma)
 ========================= */
@@ -610,6 +653,25 @@ app.get("/api/admin/tables", async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/api/admin/orders", async (req, res) => {
+  try {
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: true,
+        claimedBy: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    res.json(orders);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "server error" });
   }
 });
 
