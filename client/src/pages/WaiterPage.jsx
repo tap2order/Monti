@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
 import "../css/WaiterPage.css";
 
 export default function WaiterPage() {
   const api = import.meta.env.VITE_API_URL;
-  const socketRef = useRef(null);
   const navigate = useNavigate();
+  const socketRef = useRef(null);
 
   const orderSoundRef = useRef(null);
   const callSoundRef = useRef(null);
@@ -17,7 +17,13 @@ export default function WaiterPage() {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
+  const UNIVERSAL_WAITER_ID = 1;
+
   const [waiters, setWaiters] = useState([]);
+  const [selectedWaiterId, setSelectedWaiterId] = useState(
+    localStorage.getItem("selectedWaiterId") || ""
+  );
+
   const [orders, setOrders] = useState([]);
   const [calls, setCalls] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
@@ -27,17 +33,14 @@ export default function WaiterPage() {
   const [loadingCalls, setLoadingCalls] = useState(true);
   const [loadingMyOrders, setLoadingMyOrders] = useState(true);
 
-  const [selectedWaiterId, setSelectedWaiterId] = useState(() => {
-    return localStorage.getItem("selectedWaiterId") || "";
-  });
+  const waiterId = UNIVERSAL_WAITER_ID;
 
-  const selectedWaiter = useMemo(() => {
-    return waiters.find((w) => String(w.id) === String(selectedWaiterId)) || null;
-  }, [waiters, selectedWaiterId]);
+  const waiterName = useMemo(() => {
+    const found = waiters.find((w) => String(w.id) === String(waiterId));
+    return found?.name || "Hotel";
+  }, [waiters, waiterId]);
 
-  const waiterId = selectedWaiter?.id || "";
-  const waiterName = selectedWaiter?.name || "";
-  const hasWaiter = Boolean(waiterId);
+  const hasWaiter = true;
 
   const toggleSound = async () => {
     if (soundEnabledRef.current) {
@@ -96,7 +99,7 @@ export default function WaiterPage() {
     }
   };
 
-  const loadMyOrders = async (wid) => {
+  const loadMyOrders = async (wid = waiterId) => {
     if (!wid) {
       setMyOrders([]);
       setLoadingMyOrders(false);
@@ -119,14 +122,14 @@ export default function WaiterPage() {
       const res = await fetch(`${api}/orders/${orderId}/unclaim`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ waiterId: selectedWaiterId }),
+        body: JSON.stringify({ waiterId }),
       });
 
       const text = await res.text();
       if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
 
       setLoadingMyOrders(true);
-      await loadMyOrders(selectedWaiterId);
+      await loadMyOrders(waiterId);
     } catch (e) {
       setErr(e.message);
     }
@@ -138,6 +141,7 @@ export default function WaiterPage() {
     loadWaiters().catch((e) => setErr(e.message));
     loadOrders().catch((e) => setErr(e.message));
     loadCalls().catch(() => {});
+    loadMyOrders(waiterId).catch(() => {});
 
     socketRef.current = io(api, { transports: ["websocket"] });
     const socket = socketRef.current;
@@ -167,7 +171,7 @@ export default function WaiterPage() {
     socket.on("order:claimed", ({ orderId, waiterId: claimedBy }) => {
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
 
-      if (String(claimedBy) === String(selectedWaiterId)) {
+      if (String(claimedBy) === String(waiterId)) {
         setLoadingMyOrders(true);
         loadMyOrders(claimedBy).catch(() => {});
       }
@@ -206,6 +210,11 @@ export default function WaiterPage() {
         setLoadingMyOrders(true);
         loadMyOrders(waiterId).catch(() => {});
       }
+
+      if (order.status === "COMPLETED") {
+        setOrders((prev) => prev.filter((o) => o.id !== order.id));
+        setMyOrders((prev) => prev.filter((o) => o.id !== order.id));
+      }
     });
 
     socket.on("disconnect", () => console.log("❌ waiter socket disconnected"));
@@ -221,18 +230,10 @@ export default function WaiterPage() {
       socket.off("disconnect");
       socket.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
-
-  useEffect(() => {
-    setLoadingMyOrders(true);
-    loadMyOrders(selectedWaiterId).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedWaiterId]);
 
   const claimOrder = async (orderId) => {
     setErr("");
-    if (!waiterId) return setErr("Nema aktivnog osoblja.");
 
     try {
       const res = await fetch(`${api}/orders/${orderId}/claim`, {
@@ -253,7 +254,6 @@ export default function WaiterPage() {
 
   const handleCall = async (callId) => {
     setErr("");
-    if (!waiterId) return setErr("Nema aktivnog osoblja.");
 
     try {
       const res = await fetch(`${api}/calls/${callId}/handle`, {
@@ -272,9 +272,17 @@ export default function WaiterPage() {
   const finishOrder = async (orderId) => {
     setErr("");
     try {
-      const res = await fetch(`${api}/orders/${orderId}`, { method: "DELETE" });
+      const res = await fetch(`${api}/orders/${orderId}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ waiterId }),
+      });
+
       const text = await res.text();
       if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+
+      setLoadingMyOrders(true);
+      await loadMyOrders(waiterId);
     } catch (e) {
       setErr(e.message);
     }
@@ -379,11 +387,7 @@ export default function WaiterPage() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleCall(c.id)}
-                        className="wp-btn wp-btn--primary"
-                        disabled={!hasWaiter}
-                      >
+                      <button onClick={() => handleCall(c.id)} className="wp-btn wp-btn--primary">
                         Obrađeno
                       </button>
                     </div>
@@ -414,11 +418,7 @@ export default function WaiterPage() {
                         <div className="wp-itemsCount">{o.items.length} stavki</div>
                       </div>
 
-                      <button
-                        onClick={() => claimOrder(o.id)}
-                        className="wp-btn wp-btn--primary"
-                        disabled={!hasWaiter}
-                      >
+                      <button onClick={() => claimOrder(o.id)} className="wp-btn wp-btn--primary">
                         Preuzmi
                       </button>
                     </div>

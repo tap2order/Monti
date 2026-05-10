@@ -82,6 +82,31 @@ export default function AdminHome() {
             </div>
           </Link>
 
+          <Link to="/admin/orders-overview" className="adminHomeCard">
+            <div className="adminHomeCardTop">
+              <div className="adminHomeIconWrap">
+                <span className="adminHomeIcon" aria-hidden="true">
+                  📋
+                </span>
+              </div>
+
+              <div className="adminHomeCardHeading">
+                <div className="adminHomeCardEyebrow">Admin Overview</div>
+                <div className="adminHomeCardTitle">Historija narudžbi</div>
+              </div>
+            </div>
+
+            <div className="adminHomeCardDesc">
+              Pregled svih narudžbi, vremena kreiranja, preuzimanja i završavanja.
+            </div>
+
+            <div className="adminHomeCardFooter">
+              <span className="adminHomeCardArrow" aria-hidden="true">
+                →
+              </span>
+            </div>
+          </Link>
+
           {/* <Link to="/admin/waiters" className="adminHomeCard">
             <div className="adminHomeCardTop">
               <div className="adminHomeIconWrap">
