@@ -34,6 +34,7 @@ model Order {
   status      OrderStatus @default(UNCLAIMED)
   createdAt   DateTime    @default(now())
   claimedAt   DateTime?
+  completedAt DateTime?
   claimedById Int?
   claimedBy   Waiter?     @relation("OrderClaimedBy", fields: [claimedById], references: [id])
   items       OrderItem[]
@@ -74,16 +75,17 @@ model Table {
 model Waiter {
   name          String
   pin           String?   @unique
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  id            Int      @id @default(autoincrement())
-  handledCalls  Call[]   @relation("CallHandledBy")
-  claimedOrders Order[]  @relation("OrderClaimedBy")
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  id            Int       @id @default(autoincrement())
+  handledCalls  Call[]    @relation("CallHandledBy")
+  claimedOrders Order[]   @relation("OrderClaimedBy")
 }
 
 enum OrderStatus {
   UNCLAIMED
   CLAIMED
+  COMPLETED
 }
 
 enum CallStatus {

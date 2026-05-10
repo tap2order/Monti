@@ -1,0 +1,313 @@
+.ordersOverviewPage {
+  min-height: 100vh;
+  padding: 18px;
+  color: #ffffff;
+  background: #0b1220;
+  box-sizing: border-box;
+}
+
+.ordersOverviewShell {
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.ordersOverviewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.ordersOverviewEyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(147, 197, 253, 0.9);
+  margin-bottom: 8px;
+}
+
+.ordersOverviewTitle {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 900;
+}
+
+.ordersOverviewHeaderActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ordersOverviewBtn {
+  border: none;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.ordersOverviewBtn:hover {
+  transform: translateY(-1px);
+}
+
+.ordersOverviewBtnPrimary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.ordersOverviewBtnGhost {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.ordersOverviewStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ordersOverviewStatCard {
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(71, 85, 105, 0.22);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.ordersOverviewStatLabel {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 8px;
+}
+
+.ordersOverviewStatValue {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ordersOverviewFilters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(71, 85, 105, 0.22);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.ordersOverviewFilterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ordersOverviewLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ordersOverviewInput {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(71, 85, 105, 0.28);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.45);
+  color: #fff;
+  padding: 0 12px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.ordersOverviewInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.ordersOverviewStateCard {
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(71, 85, 105, 0.22);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.ordersOverviewStateCardError {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.ordersOverviewTableWrap {
+  overflow-x: auto;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(71, 85, 105, 0.22);
+  border-radius: 16px;
+}
+
+.ordersOverviewTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.ordersOverviewTable thead th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(147, 197, 253, 0.88);
+  padding: 14px 14px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.22);
+  background: rgba(2, 6, 23, 0.45);
+}
+
+.ordersOverviewTable tbody td {
+  padding: 14px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.16);
+  vertical-align: top;
+  font-size: 14px;
+  color: #f8fafc;
+}
+
+.ordersOverviewTable tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ordersOverviewCellStrong {
+  font-weight: 800;
+}
+
+.ordersOverviewItemsSummary {
+  max-width: 320px;
+  white-space: normal;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.ordersOverviewStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ordersOverviewStatusBadge--unclaimed {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.ordersOverviewStatusBadge--claimed {
+  background: rgba(37, 99, 235, 0.18);
+  color: #dbeafe;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+}
+
+.ordersOverviewStatusBadge--completed {
+  background: rgba(34, 197, 94, 0.16);
+  color: #bbf7d0;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.ordersOverviewExpandBtn {
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background: rgba(37, 99, 235, 0.14);
+  color: #dbeafe;
+  border-radius: 10px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ordersOverviewExpandBtn:hover {
+  background: rgba(37, 99, 235, 0.22);
+}
+
+.ordersOverviewDetailsRow td {
+  background: rgba(2, 6, 23, 0.3);
+  padding-top: 0;
+}
+
+.ordersOverviewDetailsBox {
+  padding: 14px 4px 6px;
+}
+
+.ordersOverviewDetailsTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(147, 197, 253, 0.9);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ordersOverviewDetailsItems {
+  display: grid;
+  gap: 8px;
+}
+
+.ordersOverviewDetailsItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: rgba(30, 41, 59, 0.45);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.ordersOverviewDetailsPrice {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ordersOverviewItemNote {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+@media (max-width: 900px) {
+  .ordersOverviewStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ordersOverviewFilters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ordersOverviewPage {
+    padding: 14px;
+  }
+
+  .ordersOverviewStats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ordersOverviewFilters {
+    grid-template-columns: 1fr;
+  }
+
+  .ordersOverviewHeaderActions {
+    width: 100%;
+  }
+
+  .ordersOverviewBtn {
+    flex: 1;
+  }
+}
