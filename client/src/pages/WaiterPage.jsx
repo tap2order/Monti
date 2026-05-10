@@ -82,7 +82,9 @@ export default function WaiterPage() {
 
   const loadOrders = async () => {
     try {
-      const res = await fetch(`${api}/orders/unclaimed`);
+      const res = await fetch(`${api}/orders/unclaimed`, {
+        headers: { "X-Waiter-Id": String(waiterId) },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setOrders(data);
@@ -118,7 +120,9 @@ export default function WaiterPage() {
     }
 
     try {
-      const res = await fetch(`${api}/orders/claimed/${wid}`);
+      const res = await fetch(`${api}/orders/claimed/${wid}`, {
+        headers: { "X-Waiter-Id": String(wid) },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setMyOrders(data);
@@ -132,7 +136,10 @@ export default function WaiterPage() {
     try {
       const res = await fetch(`${api}/orders/${orderId}/unclaim`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Waiter-Id": String(waiterId),
+        },
         body: JSON.stringify({ waiterId }),
       });
 
@@ -250,7 +257,10 @@ export default function WaiterPage() {
     try {
       const res = await fetch(`${api}/orders/${orderId}/claim`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Waiter-Id": String(waiterId),
+        },
         body: JSON.stringify({ waiterId }),
       });
 
@@ -289,7 +299,10 @@ export default function WaiterPage() {
     try {
       const res = await fetch(`${api}/orders/${orderId}/complete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Waiter-Id": String(waiterId),
+        },
         body: JSON.stringify({ waiterId }),
       });
 

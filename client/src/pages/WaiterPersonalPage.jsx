@@ -67,7 +67,9 @@ export default function WaiterPersonalPage() {
 
   const loadOrders = async () => {
     try {
-      const res = await fetch(`${api}/orders/unclaimed`);
+      const res = await fetch(`${api}/orders/unclaimed`, {
+        headers: { "X-Waiter-Id": String(waiterId) },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setOrders(data);
@@ -102,7 +104,9 @@ export default function WaiterPersonalPage() {
       return;
     }
     try {
-      const res = await fetch(`${api}/orders/claimed/${waiterId}`);
+      const res = await fetch(`${api}/orders/claimed/${waiterId}`, {
+        headers: { "X-Waiter-Id": String(waiterId) },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setMyOrders(data);
@@ -214,7 +218,10 @@ export default function WaiterPersonalPage() {
     try {
       const res = await fetch(`${api}/orders/${orderId}/claim`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Waiter-Id": String(waiterId),
+        },
         body: JSON.stringify({ waiterId }),
       });
 
@@ -252,7 +259,10 @@ export default function WaiterPersonalPage() {
   const finishOrder = async (orderId) => {
     setErr("");
     try {
-      const res = await fetch(`${api}/orders/${orderId}`, { method: "DELETE" });
+      const res = await fetch(`${api}/orders/${orderId}`, {
+        method: "DELETE",
+        headers: { "X-Waiter-Id": String(waiterId) },
+      });
       const text = await res.text();
       if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
     } catch (e) {
@@ -265,7 +275,10 @@ export default function WaiterPersonalPage() {
     try {
       const res = await fetch(`${api}/orders/${orderId}/unclaim`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Waiter-Id": String(waiterId),
+        },
         body: JSON.stringify({ waiterId }),
       });
 
