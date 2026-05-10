@@ -298,9 +298,9 @@ export default function WaiterPage() {
               <span className="wp-pill">{soundEnabled ? "Zvuk uključen" : "Zvuk isključen"}</span>
             </div>
 
-            <div className="wp-topMeta">
+           {/*  <div className="wp-topMeta">
               Aktivno osoblje: {waiterName || "Nije pronađeno aktivno osoblje"}
-            </div>
+            </div> */}
 
             <div className="wp-actions">
              {/*  <button
