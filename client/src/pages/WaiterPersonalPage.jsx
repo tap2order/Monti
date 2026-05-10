@@ -77,8 +77,16 @@ export default function WaiterPersonalPage() {
   };
 
   const loadCalls = async () => {
+    if (!waiterId) {
+      setCalls([]);
+      setLoadingCalls(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`${api}/calls/open`);
+      const res = await fetch(`${api}/calls/open`, {
+        headers: { "X-Waiter-Id": String(waiterId) },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCalls(data);
@@ -227,7 +235,10 @@ export default function WaiterPersonalPage() {
     try {
       const res = await fetch(`${api}/calls/${callId}/handle`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Waiter-Id": String(waiterId),
+        },
         body: JSON.stringify({ waiterId }),
       });
 

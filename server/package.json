@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "nodemon index.js",
+    "test": "node --test",
     "start": "node index.js",
     "qrcodes": "node scripts/generateQRCodes.js",
     "dbpush": "npx prisma@6.19.2 db push",

@@ -74,7 +74,10 @@ export default function WaiterPage() {
       const firstId = String(data[0].id);
       setSelectedWaiterId(firstId);
       localStorage.setItem("selectedWaiterId", firstId);
+      return firstId;
     }
+
+    return selectedWaiterId;
   };
 
   const loadOrders = async () => {
@@ -88,9 +91,17 @@ export default function WaiterPage() {
     }
   };
 
-  const loadCalls = async () => {
+  const loadCalls = async (wid = selectedWaiterId) => {
+    if (!wid) {
+      setCalls([]);
+      setLoadingCalls(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`${api}/calls/open`);
+      const res = await fetch(`${api}/calls/open`, {
+        headers: { "X-Waiter-Id": String(wid) },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCalls(data);
@@ -138,9 +149,10 @@ export default function WaiterPage() {
   useEffect(() => {
     setErr("");
 
-    loadWaiters().catch((e) => setErr(e.message));
+    loadWaiters()
+      .then((wid) => loadCalls(wid))
+      .catch((e) => setErr(e.message));
     loadOrders().catch((e) => setErr(e.message));
-    loadCalls().catch(() => {});
     loadMyOrders(waiterId).catch(() => {});
 
     socketRef.current = io(api, { transports: ["websocket"] });
@@ -258,7 +270,10 @@ export default function WaiterPage() {
     try {
       const res = await fetch(`${api}/calls/${callId}/handle`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Waiter-Id": String(waiterId),
+        },
         body: JSON.stringify({ waiterId }),
       });
 
