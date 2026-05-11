@@ -1,31 +1,30 @@
 :root {
-  --wp-bg: #0b0f14;
-  --wp-surface: rgba(255, 255, 255, 0.06);
-  --wp-border: rgba(255, 255, 255, 0.1);
-  --wp-text: rgba(255, 255, 255, 0.92);
+  --wp-bg: #08101d;
+  --wp-surface: rgba(15, 23, 42, 0.72);
+  --wp-border: rgba(71, 85, 105, 0.2);
+  --wp-text: #ffffff;
   --wp-muted: rgba(255, 255, 255, 0.66);
 
-  --wp-primary: #d7a86e;
-  --wp-primary2: #bb8b55;
+  --wp-primary: #2563eb;
+  --wp-primary2: #1d4ed8;
   --wp-danger: #ff5a68;
   --wp-success: #35d07f;
 
   --wp-radius: 18px;
-  --wp-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-  --wp-shadow-soft: 0 10px 25px rgba(0, 0, 0, 0.25);
+  --wp-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+  --wp-shadow-soft: 0 8px 22px rgba(0, 0, 0, 0.14);
 
-  --wp-font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  --wp-font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    sans-serif;
 }
 
 .wp-page {
   min-height: 100vh;
   font-family: var(--wp-font);
   color: var(--wp-text);
-  background:
-    radial-gradient(1200px 700px at 20% 10%, rgba(215, 168, 110, 0.18), transparent 55%),
-    radial-gradient(900px 500px at 80% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
-    linear-gradient(180deg, #0b0f14 0%, #070a0e 100%);
+  background: linear-gradient(180deg, #08101d 0%, #0b1220 55%, #0d1422 100%);
   padding: 18px 14px 34px;
+  box-sizing: border-box;
 }
 
 .wp-shell {
@@ -39,8 +38,7 @@
   gap: 18px;
   padding: 22px 18px;
   border: 1px solid var(--wp-border);
-  background: rgba(11, 15, 20, 0.72);
-  backdrop-filter: blur(10px);
+  background: rgba(15, 23, 42, 0.72);
   border-radius: var(--wp-radius);
   box-shadow: var(--wp-shadow-soft);
 }
@@ -62,17 +60,19 @@
   font-size: 26px;
   line-height: 1.2;
   letter-spacing: -0.02em;
+  font-weight: 900;
 }
 
 .wp-pill {
   display: inline-flex;
   align-items: center;
   font-size: 12px;
-  color: var(--wp-muted);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(147, 197, 253, 0.9);
+  border: 1px solid rgba(96, 165, 250, 0.24);
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(37, 99, 235, 0.1);
+  font-weight: 800;
 }
 
 .wp-topMeta {
@@ -91,15 +91,14 @@
   margin: 14px 0 0;
   border: 1px solid var(--wp-border);
   background: var(--wp-surface);
-  backdrop-filter: blur(10px);
   border-radius: var(--wp-radius);
   padding: 12px 14px;
   box-shadow: var(--wp-shadow-soft);
 }
 
 .wp-alert--warn {
-  border-color: rgba(255, 206, 93, 0.35);
-  background: rgba(255, 206, 93, 0.1);
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(37, 99, 235, 0.1);
 }
 
 .wp-alert--error {
@@ -131,11 +130,12 @@
   margin: 0;
   font-size: 17px;
   letter-spacing: -0.01em;
+  font-weight: 900;
 }
 
 .wp-empty {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  background: rgba(15, 23, 42, 0.5);
   border-radius: 16px;
   padding: 16px;
   color: var(--wp-muted);
@@ -151,7 +151,6 @@
 .wp-card {
   border: 1px solid var(--wp-border);
   background: var(--wp-surface);
-  backdrop-filter: blur(10px);
   border-radius: var(--wp-radius);
   box-shadow: var(--wp-shadow);
   overflow: hidden;
@@ -172,6 +171,7 @@
   font-weight: 950;
   letter-spacing: -0.01em;
   font-size: 15px;
+  color: #f8fafc;
 }
 
 .wp-itemsCount {
@@ -182,7 +182,7 @@
 
 .wp-items {
   margin-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(71, 85, 105, 0.18);
   padding-top: 12px;
   display: grid;
   gap: 10px;
@@ -214,21 +214,24 @@
 }
 
 .wp-btn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background: rgba(30, 41, 59, 0.76);
   color: var(--wp-text);
   padding: 13px 14px;
   border-radius: 16px;
   cursor: pointer;
   font-weight: 900;
-  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease,
-    opacity 120ms ease;
+  transition: transform 120ms ease, background 120ms ease,
+    border-color 120ms ease, opacity 120ms ease, box-shadow 120ms ease;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .wp-btn:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(17, 24, 39, 0.82);
+  border-color: rgba(96, 165, 250, 0.32);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
 }
 
 .wp-btn:active {
@@ -239,27 +242,36 @@
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 .wp-btn--primary {
-  border-color: rgba(215, 168, 110, 0.55);
-  background: linear-gradient(180deg, rgba(215, 168, 110, 0.95), rgba(187, 139, 85, 0.92));
-  color: #1a120a;
+  border-color: rgba(96, 165, 250, 0.24);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
+}
+
+.wp-btn--primary:hover {
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
 }
 
 .wp-btn--success {
   border-color: rgba(53, 208, 127, 0.45);
   background: rgba(53, 208, 127, 0.14);
+  color: #ffffff;
 }
 
 .wp-btn--danger {
   border-color: rgba(255, 90, 104, 0.45);
   background: rgba(255, 90, 104, 0.14);
+  color: #ffffff;
 }
 
 .wp-btn--ghost {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(96, 165, 250, 0.2);
+  background: rgba(30, 41, 59, 0.55);
+  color: #ffffff;
 }
 
 .wp-cardBtns {

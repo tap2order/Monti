@@ -13,9 +13,84 @@ export default function WaiterPage() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const soundEnabledRef = useRef(false);
 
+  const originalTitleRef = useRef(document.title);
+  const titleFlashIntervalRef = useRef(null);
+
+  const startTitleFlash = (text = "🔔 Nova notifikacija") => {
+    if (titleFlashIntervalRef.current) return;
+
+    let showAlert = true;
+
+    titleFlashIntervalRef.current = setInterval(() => {
+      document.title = showAlert ? text : originalTitleRef.current;
+      showAlert = !showAlert;
+    }, 800);
+  };
+
+  const stopTitleFlash = () => {
+    if (titleFlashIntervalRef.current) {
+      clearInterval(titleFlashIntervalRef.current);
+      titleFlashIntervalRef.current = null;
+    }
+
+    document.title = originalTitleRef.current;
+  };
+
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  useEffect(() => {
+    const stopWhenUserReturns = () => {
+      if (!document.hidden) {
+        stopTitleFlash();
+      }
+    };
+
+    document.addEventListener("visibilitychange", stopWhenUserReturns);
+    window.addEventListener("focus", stopTitleFlash);
+
+    return () => {
+      document.removeEventListener("visibilitychange", stopWhenUserReturns);
+      window.removeEventListener("focus", stopTitleFlash);
+      stopTitleFlash();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      if (orderSoundRef.current) {
+        orderSoundRef.current
+          .play()
+          .then(() => {
+            orderSoundRef.current.pause();
+            orderSoundRef.current.currentTime = 0;
+          })
+          .catch(() => {});
+      }
+
+      if (callSoundRef.current) {
+        callSoundRef.current
+          .play()
+          .then(() => {
+            callSoundRef.current.pause();
+            callSoundRef.current.currentTime = 0;
+          })
+          .catch(() => {});
+      }
+
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    };
+
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("touchstart", unlockAudio);
+
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    };
+  }, []);
 
   const UNIVERSAL_WAITER_ID = 1;
 
@@ -173,6 +248,8 @@ export default function WaiterPage() {
         return [order, ...prev];
       });
 
+      startTitleFlash("🔔 NOVA NARUDŽBA");
+
       if (!soundEnabledRef.current) return;
       const a = orderSoundRef.current;
       if (!a) return;
@@ -203,6 +280,9 @@ export default function WaiterPage() {
 
     socket.on("call:new", (call) => {
       setCalls((prev) => [call, ...prev]);
+
+      startTitleFlash("🔔 NOVI POZIV");
+
       if (soundEnabledRef.current) {
         callSoundRef.current?.play().catch(() => {
           try {
@@ -326,12 +406,12 @@ export default function WaiterPage() {
               <span className="wp-pill">{soundEnabled ? "Zvuk uključen" : "Zvuk isključen"}</span>
             </div>
 
-           {/*  <div className="wp-topMeta">
+            {/*  <div className="wp-topMeta">
               Aktivno osoblje: {waiterName || "Nije pronađeno aktivno osoblje"}
             </div> */}
 
             <div className="wp-actions">
-             {/*  <button
+              {/*  <button
                 className="wp-btn wp-btn--ghost"
                 onClick={() => orderSoundRef.current?.play().catch(() => {})}
               >
