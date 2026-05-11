@@ -36,9 +36,44 @@ export default function WaiterPage() {
     document.title = originalTitleRef.current;
   };
 
+  const requestNotificationPermission = async () => {
+    if (!("Notification" in window)) {
+      console.log("Browser ne podržava notifikacije.");
+      return;
+    }
+
+    if (Notification.permission === "default") {
+      try {
+        await Notification.requestPermission();
+      } catch (e) {
+        console.log("Notification permission failed:", e);
+      }
+    }
+  };
+
+  const showBrowserNotification = (title, body) => {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    try {
+      new Notification(title, {
+        body,
+        icon: "/favicon.ico",
+        badge: "/favicon.ico",
+        requireInteraction: false,
+      });
+    } catch (e) {
+      console.log("Show notification failed:", e);
+    }
+  };
+
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   useEffect(() => {
     const stopWhenUserReturns = () => {
@@ -250,6 +285,11 @@ export default function WaiterPage() {
 
       startTitleFlash("🔔 NOVA NARUDŽBA");
 
+      showBrowserNotification(
+        "Nova narudžba",
+        `Stigla je nova narudžba za sobu ${order.tableId}.`
+      );
+
       if (!soundEnabledRef.current) return;
       const a = orderSoundRef.current;
       if (!a) return;
@@ -282,6 +322,11 @@ export default function WaiterPage() {
       setCalls((prev) => [call, ...prev]);
 
       startTitleFlash("🔔 NOVI POZIV");
+
+      showBrowserNotification(
+        "Novi poziv",
+        `Soba ${call.tableId} traži pomoć ili račun.`
+      );
 
       if (soundEnabledRef.current) {
         callSoundRef.current?.play().catch(() => {
@@ -420,6 +465,10 @@ export default function WaiterPage() {
 
               <button className="wp-btn wp-btn--primary" onClick={toggleSound}>
                 {soundEnabled ? "Isključi zvuk" : "Uključi zvuk"}
+              </button>
+
+              <button className="wp-btn wp-btn--ghost" onClick={requestNotificationPermission}>
+                Dozvoli notifikacije
               </button>
 
               {/* <button
