@@ -20,13 +20,231 @@ export default function TablePage() {
   const [staffPopupOpen, setStaffPopupOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
 
-  // jezik: 0 = osnovni name, 1 = name1, 2 = name2, 3 = name3, 4 = name4
-  const [lang, setLang] = useState(0);
-
-  // Token (optional)
+  // Token + language from RoomLanguagePage
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategory = searchParams.get("category");
   const token = searchParams.get("token") || "";
+  const langCode = searchParams.get("lang") || "bs";
+
+  const langMap = {
+    bs: 0,
+    en: 1,
+    de: 2,
+    ar: 3,
+    fr: 4,
+  };
+
+  // jezik: 0 = osnovni name, 1 = name1, 2 = name2, 3 = name3, 4 = name4
+  const lang = langMap[langCode] ?? 0;
+
+  const text = {
+    bs: {
+      roomService: "Posluga u sobu",
+      room: "Soba",
+      subtitleCategory: "Odaberite artikle za svoju narudžbu",
+      subtitleHome: "Pregledajte meni i kontaktirajte osoblje po potrebi",
+      callStaff: "Pozovi osoblje",
+      error: "Greška",
+      back: "Nazad",
+      category: "Kategorija",
+      menu: "Meni",
+      total: "ukupno",
+      items: "artikala",
+      add: "Dodaj",
+      added: "Dodano",
+      emptyCart: "Korpa je prazna.",
+      orderSuccess: "Vaša narudžba je uspješno poslana.",
+      staffCalled:
+        "Hotelsko osoblje je obaviješteno i uskoro će doći do Vaše sobe.",
+      billRequested: "Račun je zatražen.",
+      yourOrder: "Vaša narudžba",
+      cart: "Korpa",
+      closeCart: "Zatvori korpu",
+      close: "Zatvori",
+      noItems: "Još nema artikala",
+      addSomething: "Dodajte nešto iz menija.",
+      decreaseQty: "Smanji količinu",
+      increaseQty: "Povećaj količinu",
+      note: "Napomena (opcionalno)",
+      notePlaceholder: "npr. zobeno mlijeko, bez šećera…",
+      totalLabel: "Ukupno",
+      sending: "Slanje…",
+      finishOrder: "Završi narudžbu",
+      finePrint: "Vaša narudžba se odmah šalje hotelskom osoblju.",
+      viewCart: "Vidi korpu",
+      openCart: "Otvori korpu",
+      orderSent: "Narudžba poslana",
+      staffNotified: "Osoblje je obaviješteno",
+      ok: "U redu",
+      footerHint:
+        "Nakon dodavanja artikla, dolje će se pojaviti pregled korpe.",
+    },
+    en: {
+      roomService: "Room service",
+      room: "Room",
+      subtitleCategory: "Choose items for your order",
+      subtitleHome: "Browse the menu and contact staff if needed",
+      callStaff: "Call staff",
+      error: "Error",
+      back: "Back",
+      category: "Category",
+      menu: "Menu",
+      total: "total",
+      items: "items",
+      add: "Add",
+      added: "Added",
+      emptyCart: "Your cart is empty.",
+      orderSuccess: "Your order has been sent successfully.",
+      staffCalled:
+        "Hotel staff has been notified and will come to your room shortly.",
+      billRequested: "The bill has been requested.",
+      yourOrder: "Your order",
+      cart: "Cart",
+      closeCart: "Close cart",
+      close: "Close",
+      noItems: "No items yet",
+      addSomething: "Add something from the menu.",
+      decreaseQty: "Decrease quantity",
+      increaseQty: "Increase quantity",
+      note: "Note (optional)",
+      notePlaceholder: "e.g. oat milk, no sugar…",
+      totalLabel: "Total",
+      sending: "Sending…",
+      finishOrder: "Place order",
+      finePrint: "Your order is sent directly to hotel staff.",
+      viewCart: "View cart",
+      openCart: "Open cart",
+      orderSent: "Order sent",
+      staffNotified: "Staff has been notified",
+      ok: "OK",
+      footerHint:
+        "After adding an item, your cart preview will appear at the bottom.",
+    },
+    de: {
+      roomService: "Zimmerservice",
+      room: "Zimmer",
+      subtitleCategory: "Wählen Sie Artikel für Ihre Bestellung",
+      subtitleHome:
+        "Durchsuchen Sie das Menü und kontaktieren Sie bei Bedarf das Personal",
+      callStaff: "Personal rufen",
+      error: "Fehler",
+      back: "Zurück",
+      category: "Kategorie",
+      menu: "Menü",
+      total: "insgesamt",
+      items: "Artikel",
+      add: "Hinzufügen",
+      added: "Hinzugefügt",
+      emptyCart: "Der Warenkorb ist leer.",
+      orderSuccess: "Ihre Bestellung wurde erfolgreich gesendet.",
+      staffCalled:
+        "Das Hotelpersonal wurde benachrichtigt und kommt bald zu Ihrem Zimmer.",
+      billRequested: "Die Rechnung wurde angefordert.",
+      yourOrder: "Ihre Bestellung",
+      cart: "Warenkorb",
+      closeCart: "Warenkorb schließen",
+      close: "Schließen",
+      noItems: "Noch keine Artikel",
+      addSomething: "Fügen Sie etwas aus dem Menü hinzu.",
+      decreaseQty: "Menge verringern",
+      increaseQty: "Menge erhöhen",
+      note: "Hinweis (optional)",
+      notePlaceholder: "z.B. Hafermilch, ohne Zucker…",
+      totalLabel: "Gesamt",
+      sending: "Wird gesendet…",
+      finishOrder: "Bestellung abschließen",
+      finePrint: "Ihre Bestellung wird direkt an das Hotelpersonal gesendet.",
+      viewCart: "Warenkorb anzeigen",
+      openCart: "Warenkorb öffnen",
+      orderSent: "Bestellung gesendet",
+      staffNotified: "Personal wurde benachrichtigt",
+      ok: "OK",
+      footerHint:
+        "Nach dem Hinzufügen eines Artikels erscheint unten die Warenkorbübersicht.",
+    },
+    ar: {
+      roomService: "خدمة الغرف",
+      room: "غرفة",
+      subtitleCategory: "اختر العناصر لطلبك",
+      subtitleHome: "تصفح القائمة واتصل بالموظفين عند الحاجة",
+      callStaff: "استدعاء الموظفين",
+      error: "خطأ",
+      back: "رجوع",
+      category: "الفئة",
+      menu: "القائمة",
+      total: "الإجمالي",
+      items: "عناصر",
+      add: "إضافة",
+      added: "تمت الإضافة",
+      emptyCart: "السلة فارغة.",
+      orderSuccess: "تم إرسال طلبك بنجاح.",
+      staffCalled: "تم إبلاغ موظفي الفندق وسيصلون إلى غرفتك قريبًا.",
+      billRequested: "تم طلب الفاتورة.",
+      yourOrder: "طلبك",
+      cart: "السلة",
+      closeCart: "إغلاق السلة",
+      close: "إغلاق",
+      noItems: "لا توجد عناصر بعد",
+      addSomething: "أضف شيئًا من القائمة.",
+      decreaseQty: "تقليل الكمية",
+      increaseQty: "زيادة الكمية",
+      note: "ملاحظة (اختياري)",
+      notePlaceholder: "مثلاً: بدون سكر…",
+      totalLabel: "المجموع",
+      sending: "جارٍ الإرسال…",
+      finishOrder: "إتمام الطلب",
+      finePrint: "يتم إرسال طلبك مباشرة إلى موظفي الفندق.",
+      viewCart: "عرض السلة",
+      openCart: "فتح السلة",
+      orderSent: "تم إرسال الطلب",
+      staffNotified: "تم إبلاغ الموظفين",
+      ok: "حسنًا",
+      footerHint: "بعد إضافة عنصر، ستظهر معاينة السلة في الأسفل.",
+    },
+    fr: {
+      roomService: "Service en chambre",
+      room: "Chambre",
+      subtitleCategory: "Choisissez des articles pour votre commande",
+      subtitleHome: "Consultez le menu et contactez le personnel si nécessaire",
+      callStaff: "Appeler le personnel",
+      error: "Erreur",
+      back: "Retour",
+      category: "Catégorie",
+      menu: "Menu",
+      total: "total",
+      items: "articles",
+      add: "Ajouter",
+      added: "Ajouté",
+      emptyCart: "Votre panier est vide.",
+      orderSuccess: "Votre commande a été envoyée avec succès.",
+      staffCalled:
+        "Le personnel de l'hôtel a été informé et viendra bientôt à votre chambre.",
+      billRequested: "L'addition a été demandée.",
+      yourOrder: "Votre commande",
+      cart: "Panier",
+      closeCart: "Fermer le panier",
+      close: "Fermer",
+      noItems: "Aucun article pour le moment",
+      addSomething: "Ajoutez quelque chose depuis le menu.",
+      decreaseQty: "Diminuer la quantité",
+      increaseQty: "Augmenter la quantité",
+      note: "Note (optionnel)",
+      notePlaceholder: "ex. lait d’avoine, sans sucre…",
+      totalLabel: "Total",
+      sending: "Envoi…",
+      finishOrder: "Valider la commande",
+      finePrint: "Votre commande est envoyée directement au personnel de l'hôtel.",
+      viewCart: "Voir le panier",
+      openCart: "Ouvrir le panier",
+      orderSent: "Commande envoyée",
+      staffNotified: "Le personnel a été informé",
+      ok: "OK",
+      footerHint:
+        "Après avoir ajouté un article, l’aperçu du panier apparaîtra en bas.",
+    },
+  };
+
+  const t = text[langCode] || text.bs;
 
   const getItemName = (item) => {
     if (!item) return "";
@@ -104,7 +322,7 @@ export default function TablePage() {
     setCallMsg("");
 
     const translatedName = getItemName(it);
-    showToast(`Dodano “${translatedName}”`);
+    showToast(`${t.added} “${translatedName}”`);
 
     setCart((prev) => {
       const existing = prev[it.id];
@@ -152,7 +370,7 @@ export default function TablePage() {
     setCallMsg("");
 
     if (!hasItems) {
-      setErr("Korpa je prazna.");
+      setErr(t.emptyCart);
       return;
     }
 
@@ -179,7 +397,7 @@ export default function TablePage() {
       if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
 
       setCart({});
-      setPlacedMsg("Vaša narudžba je uspješno poslana.");
+      setPlacedMsg(t.orderSuccess);
       setOrderPopupOpen(true);
       setCartOpen(false);
 
@@ -211,7 +429,7 @@ export default function TablePage() {
       const text = await res.text();
       if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
 
-      setCallMsg("Hotelsko osoblje je obaviješteno i uskoro će doći do Vaše sobe.");
+      setCallMsg(t.staffCalled);
       setStaffPopupOpen(true);
     } catch (e) {
       setErr(e.message);
@@ -236,7 +454,7 @@ export default function TablePage() {
       const text = await res.text();
       if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
 
-      setCallMsg("Račun je zatražen.");
+      setCallMsg(t.billRequested);
     } catch (e) {
       setErr(e.message);
     }
@@ -256,33 +474,21 @@ export default function TablePage() {
       <div className="tp-shell">
         <div className="tp-header">
           <div>
-            <div className="tp-kicker">Posluga u sobu</div>
-            <h1 className="tp-h1">Soba {tableId}</h1>
+            <div className="tp-kicker">{t.roomService}</div>
+            <h1 className="tp-h1">
+              {t.room} {tableId}
+            </h1>
             <div className="tp-sub">
-              {selectedCategory
-                ? "Odaberite artikle za svoju narudžbu"
-                : "Pregledajte meni i kontaktirajte osoblje po potrebi"}
+              {selectedCategory ? t.subtitleCategory : t.subtitleHome}
             </div>
           </div>
 
           <div className="tp-headerActions tp-headerActions--vertical">
             <button onClick={callWaiter} className="tp-btn tp-btn--secondary">
-              Pozovi osoblje
+              {t.callStaff}
             </button>
 
-           <div className="tp-langWrapper">
-  <select
-    value={lang}
-    onChange={(e) => setLang(Number(e.target.value))}
-    className="tp-langSelect"
-  >
-    <option value={0}>Bosnian</option>
-    <option value={1}>English</option>
-    <option value={2}>German</option>
-    <option value={3}>Arabic</option>
-    <option value={4}>French</option>
-  </select>
-</div>
+            {/* Language is selected only once on RoomLanguagePage */}
           </div>
         </div>
 
@@ -295,7 +501,7 @@ export default function TablePage() {
         <div className="tp-alerts">
           {err && (
             <div className="tp-alert tp-alert--error">
-              <div className="tp-alertTitle">Greška</div>
+              <div className="tp-alertTitle">{t.error}</div>
               <div className="tp-alertBody">{err}</div>
             </div>
           )}
@@ -304,22 +510,24 @@ export default function TablePage() {
         <div className="tp-card">
           {selectedCategory && (
             <button className="tp-backButton" onClick={goBackToMenu}>
-              ← Nazad
+              ← {t.back}
             </button>
           )}
 
           <div className="tp-cardHeader">
             {selectedCategory ? (
               <div>
-                <div className="tp-kicker">Kategorija</div>
+                <div className="tp-kicker">{t.category}</div>
                 <h2 className="tp-h2" style={{ marginTop: 6 }}>
                   {selectedCategory}
                 </h2>
               </div>
             ) : (
               <>
-                <h2 className="tp-h2">Meni</h2>
-                <div className="tp-badge">{categories.length} ukupno</div>
+                <h2 className="tp-h2">{t.menu}</h2>
+                <div className="tp-badge">
+                  {categories.length} {t.total}
+                </div>
               </>
             )}
           </div>
@@ -346,7 +554,9 @@ export default function TablePage() {
                     style={{ "--tp-accent": accent }}
                   >
                     <div className="tp-categoryName">{cat}</div>
-                    <div className="tp-categoryMeta">{count} artikala</div>
+                    <div className="tp-categoryMeta">
+                      {count} {t.items}
+                    </div>
                   </button>
                 );
               })}
@@ -370,7 +580,7 @@ export default function TablePage() {
                       onClick={() => addItem(it)}
                       className="tp-btn tp-btn--primary"
                     >
-                      Dodaj
+                      {t.add}
                     </button>
                   </div>
                 </div>
@@ -384,17 +594,17 @@ export default function TablePage() {
             <div className="tp-drawer" onClick={(e) => e.stopPropagation()}>
               <div className="tp-drawerHeader">
                 <div>
-                  <div className="tp-kicker">Vaša narudžba</div>
+                  <div className="tp-kicker">{t.yourOrder}</div>
                   <h2 className="tp-h2" style={{ marginTop: 6 }}>
-                    Korpa
+                    {t.cart}
                   </h2>
                 </div>
 
                 <button
                   className="tp-btn tp-btn--icon"
                   onClick={() => setCartOpen(false)}
-                  aria-label="Zatvori korpu"
-                  title="Zatvori"
+                  aria-label={t.closeCart}
+                  title={t.close}
                 >
                   ✕
                 </button>
@@ -403,8 +613,8 @@ export default function TablePage() {
               <div className="tp-drawerBody">
                 {!hasItems ? (
                   <div className="tp-empty">
-                    <div className="tp-emptyTitle">Još nema artikala</div>
-                    <div className="tp-muted">Dodajte nešto iz menija.</div>
+                    <div className="tp-emptyTitle">{t.noItems}</div>
+                    <div className="tp-muted">{t.addSomething}</div>
                   </div>
                 ) : (
                   <div className="tp-cartList">
@@ -423,7 +633,7 @@ export default function TablePage() {
                           <button
                             onClick={() => removeOne(ci.itemId)}
                             className="tp-btn tp-btn--icon"
-                            aria-label="Smanji količinu"
+                            aria-label={t.decreaseQty}
                           >
                             −
                           </button>
@@ -437,18 +647,18 @@ export default function TablePage() {
                               })
                             }
                             className="tp-btn tp-btn--icon"
-                            aria-label="Povećaj količinu"
+                            aria-label={t.increaseQty}
                           >
                             +
                           </button>
                         </div>
 
                         <div className="tp-noteBlock">
-                          <div className="tp-inputLabel">Napomena (opcionalno)</div>
+                          <div className="tp-inputLabel">{t.note}</div>
                           <input
                             value={ci.note}
                             onChange={(e) => setNote(ci.itemId, e.target.value)}
-                            placeholder="npr. zobeno mlijeko, bez šećera…"
+                            placeholder={t.notePlaceholder}
                             className="tp-input"
                           />
                         </div>
@@ -460,7 +670,7 @@ export default function TablePage() {
 
               <div className="tp-drawerFooter">
                 <div className="tp-totalRow">
-                  <div className="tp-totalLabel">Ukupno</div>
+                  <div className="tp-totalLabel">{t.totalLabel}</div>
                   <div className="tp-totalValue">{total.toFixed(2)} KM</div>
                 </div>
 
@@ -469,12 +679,10 @@ export default function TablePage() {
                   disabled={placing || !hasItems}
                   className="tp-btn tp-btn--checkout"
                 >
-                  {placing ? "Slanje…" : "Završi narudžbu"}
+                  {placing ? t.sending : t.finishOrder}
                 </button>
 
-                <div className="tp-finePrint">
-                  Vaša narudžba se odmah šalje hotelskom osoblju.
-                </div>
+                <div className="tp-finePrint">{t.finePrint}</div>
               </div>
             </div>
           </div>
@@ -485,10 +693,10 @@ export default function TablePage() {
             type="button"
             className="tp-stickyCartBar"
             onClick={() => setCartOpen(true)}
-            aria-label="Otvori korpu"
+            aria-label={t.openCart}
           >
             <span className="tp-stickyCartCount">{cartQty}</span>
-            <span className="tp-stickyCartLabel">Vidi korpu</span>
+            <span className="tp-stickyCartLabel">{t.viewCart}</span>
             <span className="tp-stickyCartPrice">{total.toFixed(2)} KM</span>
           </button>
         )}
@@ -498,19 +706,16 @@ export default function TablePage() {
             className="tp-modalOverlay"
             onClick={() => setOrderPopupOpen(false)}
           >
-            <div
-              className="tp-modal"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="tp-modal" onClick={(e) => e.stopPropagation()}>
               <div className="tp-modalIcon">✓</div>
-              <h3 className="tp-modalTitle">Narudžba poslana</h3>
+              <h3 className="tp-modalTitle">{t.orderSent}</h3>
               <p className="tp-modalText">{placedMsg}</p>
 
               <button
                 className="tp-btn tp-btn--checkout"
                 onClick={() => setOrderPopupOpen(false)}
               >
-                U redu
+                {t.ok}
               </button>
             </div>
           </div>
@@ -521,19 +726,16 @@ export default function TablePage() {
             className="tp-modalOverlay"
             onClick={() => setStaffPopupOpen(false)}
           >
-            <div
-              className="tp-modal"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="tp-modal" onClick={(e) => e.stopPropagation()}>
               <div className="tp-modalIcon">✓</div>
-              <h3 className="tp-modalTitle">Osoblje je obaviješteno</h3>
+              <h3 className="tp-modalTitle">{t.staffNotified}</h3>
               <p className="tp-modalText">{callMsg}</p>
 
               <button
                 className="tp-btn tp-btn--checkout"
                 onClick={() => setStaffPopupOpen(false)}
               >
-                U redu
+                {t.ok}
               </button>
             </div>
           </div>
@@ -541,6 +743,13 @@ export default function TablePage() {
 
         <div className="tp-footerHint">
           Nakon dodavanja artikla, dolje će se pojaviti pregled korpe.
+        </div>
+
+        <div className="guestPoweredBy">
+          Digital ordering powered by{" "}
+          <a href="https://tap2order.ba" target="_blank" rel="noreferrer">
+            Tap2Order
+          </a>
         </div>
       </div>
     </div>

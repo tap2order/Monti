@@ -230,3 +230,94 @@
     font-size: 20px;
   }
 }
+
+.hotelServicesModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  backdrop-filter: blur(6px);
+}
+
+.hotelServicesModal {
+  width: min(420px, 100%);
+  border-radius: 26px;
+  border: 1px solid rgba(212, 166, 58, 0.26);
+  background:
+    linear-gradient(180deg, rgba(16, 23, 38, 0.98), rgba(8, 12, 22, 0.98));
+  box-shadow: 0 24px 65px rgba(0, 0, 0, 0.45);
+  padding: 28px 22px 22px;
+  text-align: center;
+  color: #f8fafc;
+}
+
+.hotelServicesModalIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 166, 58, 0.14);
+  border: 1px solid rgba(212, 166, 58, 0.32);
+  color: #d4a63a;
+  font-size: 30px;
+  font-weight: 900;
+  font-family: Georgia, serif;
+}
+
+.hotelServicesModalTitle {
+  margin: 0 0 10px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.hotelServicesModalText {
+  margin: 0 0 22px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.hotelServicesModalBtn {
+  width: 100%;
+  height: 50px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 166, 58, 0.38);
+  background: rgba(212, 166, 58, 0.14);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.hotelServicesModalBtn:hover {
+  border-color: rgba(212, 166, 58, 0.58);
+  background: rgba(212, 166, 58, 0.2);
+}
+
+.guestPoweredBy {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.42);
+  font-weight: 600;
+}
+
+.guestPoweredBy a {
+  color: rgba(212, 166, 58, 0.78);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.guestPoweredBy a:hover {
+  color: #d4a63a;
+}
