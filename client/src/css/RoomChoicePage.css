@@ -223,3 +223,22 @@
     font-size: 13px;
   }
 }
+
+.guestPoweredBy {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.42);
+  font-weight: 600;
+}
+
+.guestPoweredBy a {
+  color: rgba(212, 166, 58, 0.78);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.guestPoweredBy a:hover {
+  color: #d4a63a;
+}
