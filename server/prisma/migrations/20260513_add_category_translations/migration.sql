@@ -1,0 +1,5 @@
+ALTER TABLE "MenuCategory"
+ADD COLUMN "name1" TEXT,
+ADD COLUMN "name2" TEXT,
+ADD COLUMN "name3" TEXT,
+ADD COLUMN "name4" TEXT;

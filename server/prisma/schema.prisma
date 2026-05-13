@@ -10,6 +10,10 @@ datasource db {
 model MenuCategory {
   id    String     @id @default(cuid())
   name  String     @unique
+  name1 String?
+  name2 String?
+  name3 String?
+  name4 String?
   items MenuItem[]
 }
 
