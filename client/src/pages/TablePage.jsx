@@ -261,12 +261,11 @@ export default function TablePage() {
     setSearchParams(params);
   };
 
-  const goBackToMenu = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
+  const goBackToRoomChoice = () => {
+    navigate(`/t/${tableId}?token=${token}&lang=${langCode}`);
+  };
 
+  const goBackToMenu = () => {
     const params = new URLSearchParams(searchParams);
     params.delete("category");
     setSearchParams(params);
@@ -472,6 +471,14 @@ export default function TablePage() {
     <div className="tp-page">
       <div className="tp-ambient" aria-hidden="true" />
       <div className="tp-shell">
+        <button
+          className="guestBackBtn"
+          type="button"
+          onClick={goBackToRoomChoice}
+        >
+          ← {t.back}
+        </button>
+
         <div className="tp-header">
           <div>
             <div className="tp-kicker">{t.roomService}</div>
@@ -741,9 +748,7 @@ export default function TablePage() {
           </div>
         )}
 
-        <div className="tp-footerHint">
-          Nakon dodavanja artikla, dolje će se pojaviti pregled korpe.
-        </div>
+        <div className="tp-footerHint">{t.footerHint}</div>
 
         <div className="guestPoweredBy">
           Digital ordering powered by{" "}

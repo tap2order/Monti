@@ -74,6 +74,14 @@ export default function HotelServicesPage() {
   return (
     <div className="hotelServicesPage">
       <div className="hotelServicesContainer">
+        <button
+          className="guestBackBtn"
+          type="button"
+          onClick={() => navigate(`/t/${tableId}?token=${token}&lang=${lang}`)}
+        >
+          ← {t.backToMenu}
+        </button>
+
         <section className="hotelServicesHero">
           <div className="hotelServicesHeroLeft">
             <p className="hotelServicesEyebrow">{t.eyebrow}</p>
@@ -81,17 +89,6 @@ export default function HotelServicesPage() {
               {t.room} {tableId}
             </h1>
             <p className="hotelServicesSubtitle">{t.subtitle}</p>
-          </div>
-
-          <div className="hotelServicesHeroRight">
-            <button
-              className="hotelServicesStaffBtn"
-              type="button"
-              onClick={() =>
-                navigate(`/t/${tableId}?token=${token}&lang=${lang}`)}
-            >
-              {t.backToMenu}
-            </button>
           </div>
         </section>
 
