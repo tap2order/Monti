@@ -24,6 +24,7 @@ export default function RoomLanguagePage() {
       menuText: "Pregled hrane, pića i room service ponude.",
       services: "Hotelske usluge",
       servicesText: "Masaže, quad, wellness i ostale dodatne usluge.",
+      back: "Nazad",
     },
     en: {
       welcome: "WELCOME",
@@ -36,6 +37,7 @@ export default function RoomLanguagePage() {
       menuText: "Browse food, drinks and room service offer.",
       services: "Hotel services",
       servicesText: "Massages, quad, wellness and other additional services.",
+      back: "Back",
     },
     de: {
       welcome: "WILLKOMMEN",
@@ -48,10 +50,15 @@ export default function RoomLanguagePage() {
       menuText: "Speisen, Getränke und Room-Service-Angebot ansehen.",
       services: "Hoteldienstleistungen",
       servicesText: "Massagen, Quad, Wellness und weitere Zusatzleistungen.",
+      back: "Zurück",
     },
   };
 
   const t = text[selectedLang] || text.bs;
+
+  const goBack = () => {
+    navigate(-1);
+  };
 
   const goToMenu = () => {
     navigate(`/t/${tableId}/menu?token=${token}&lang=${selectedLang}`);
@@ -68,6 +75,8 @@ export default function RoomLanguagePage() {
         <div className="choiceBgGlow choiceBgGlow2"></div>
 
         <div className="choiceCard">
+          
+
           <div className="choiceTopRow">
             <div className="choiceTopText">
               <p className="choiceEyebrow">{t.welcome}</p>
@@ -88,7 +97,9 @@ export default function RoomLanguagePage() {
               }}
             >
               <span className="choiceOptionLabel">Bosanski</span>
-              <span className="choiceOptionText">Nastavite na bosanskom jeziku.</span>
+              <span className="choiceOptionText">
+                Nastavite na bosanskom jeziku.
+              </span>
             </button>
 
             <button
@@ -126,6 +137,14 @@ export default function RoomLanguagePage() {
       <div className="choiceBgGlow choiceBgGlow2"></div>
 
       <div className="choiceCard">
+        <button
+          className="guestBackBtn"
+          type="button"
+          onClick={() => setLanguageConfirmed(false)}
+        >
+          ← {t.back}
+        </button>
+
         <div className="choiceTopRow">
           <div className="choiceTopText">
             <p className="choiceEyebrow">{t.welcome}</p>
@@ -161,15 +180,11 @@ export default function RoomLanguagePage() {
         </div>
 
         <div className="guestPoweredBy">
-  Digital ordering powered by{" "}
-  <a
-    href="https://tap2order.ba"
-    target="_blank"
-    rel="noreferrer"
-  >
-    Tap2Order
-  </a>
-</div>
+          Digital ordering powered by{" "}
+          <a href="https://tap2order.ba" target="_blank" rel="noreferrer">
+            Tap2Order
+          </a>
+        </div>
       </div>
     </div>
   );
