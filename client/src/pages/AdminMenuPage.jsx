@@ -1,11 +1,56 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/AdminMenuPage.css";
-import mockMenu from "../mock/adminMenuMock.json";
+
+const emptyCategoryForm = {
+  name: "",
+  name1: "",
+  name2: "",
+  name3: "",
+  name4: "",
+};
+
+const emptyItemForm = {
+  id: "",
+  name: "",
+  name1: "",
+  name2: "",
+  name3: "",
+  name4: "",
+  imageUrl: "",
+  price: "",
+};
 
 export default function AdminMenuPage() {
   const api = import.meta.env.VITE_API_URL;
   const nav = useNavigate();
+
+  const [menu, setMenu] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [selectedCatId, setSelectedCatId] = useState("");
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryModalMode, setCategoryModalMode] = useState("create");
+  const [categoryForm, setCategoryForm] = useState(emptyCategoryForm);
+
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [itemModalMode, setItemModalMode] = useState("create");
+  const [itemForm, setItemForm] = useState(emptyItemForm);
+  const [showItemTranslations, setShowItemTranslations] = useState(false);
+
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState("");
+
+  const [isCreatingItem, setIsCreatingItem] = useState(false);
+  const [savingItemId, setSavingItemId] = useState("");
+  const [deletingItemId, setDeletingItemId] = useState("");
+
+  const dropdownRef = useRef(null);
 
   function getAuth() {
     return localStorage.getItem("adminAuth") || "";
@@ -38,39 +83,35 @@ export default function AdminMenuPage() {
     return r;
   }
 
-  const [menu, setMenu] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const [newCat, setNewCat] = useState("");
-  const [selectedCatId, setSelectedCatId] = useState("");
-  const [categoryDraftName, setCategoryDraftName] = useState("");
-
-  const [newItemName, setNewItemName] = useState("");
-  const [newItemName1, setNewItemName1] = useState("");
-  const [newItemName2, setNewItemName2] = useState("");
-  const [newItemName3, setNewItemName3] = useState("");
-  const [newItemName4, setNewItemName4] = useState("");
-  const [newItemImage, setNewItemImage] = useState("");
-  const [newItemPrice, setNewItemPrice] = useState("");
-
-  const [showNewTranslations, setShowNewTranslations] = useState(false);
-  const [openItemId, setOpenItemId] = useState("");
-  const [mobileTab, setMobileTab] = useState("category");
-
-  const [itemDrafts, setItemDrafts] = useState({});
-  const [savingItemId, setSavingItemId] = useState("");
-  const [deletingItemId, setDeletingItemId] = useState("");
-  const [isCreatingItem, setIsCreatingItem] = useState(false);
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const [isSavingCategory, setIsSavingCategory] = useState(false);
-  const [deletingCategoryId, setDeletingCategoryId] = useState("");
-
   const selectedCat = useMemo(
     () => menu.find((c) => c.id === selectedCatId) || null,
     [menu, selectedCatId]
   );
+
+  const totalItems = useMemo(
+    () => menu.reduce((sum, cat) => sum + (cat.items?.length || 0), 0),
+    [menu]
+  );
+
+  useEffect(() => {
+    function handleOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setCategoriesOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!getAuth()) {
+      nav("/admin");
+      return;
+    }
+    loadMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
 
   function resetMessages() {
     setErr("");
@@ -86,33 +127,7 @@ export default function AdminMenuPage() {
     });
   }
 
-  // ---------------------------------------------------------
-  // 1) MOCK verzija za lokalni UI rad
-  // ---------------------------------------------------------
-  async function loadMenuMock() {
-    setLoading(true);
-    setErr("");
-
-    try {
-      const data = mockMenu;
-      setMenu(data);
-
-      setSelectedCatId((prev) => {
-        if (prev && data.some((c) => c.id === prev)) return prev;
-        return data[0]?.id || "";
-      });
-    } catch (e) {
-      setErr(String(e.message || e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ---------------------------------------------------------
-  // 2) PRAVA API verzija
-  // Ostavljena ovdje da je ne brišemo
-  // ---------------------------------------------------------
-  async function loadMenuApi() {
+  async function loadMenu() {
     setLoading(true);
     setErr("");
 
@@ -122,7 +137,6 @@ export default function AdminMenuPage() {
       const data = await r.json();
 
       setMenu(data);
-
       setSelectedCatId((prev) => {
         if (prev && data.some((c) => c.id === prev)) return prev;
         return data[0]?.id || "";
@@ -134,70 +148,77 @@ export default function AdminMenuPage() {
     }
   }
 
-  // ---------------------------------------------------------
-  // AKTIVNA loadMenu funkcija
-  // Ovdje samo biraj koju želiš koristiti
-  // ---------------------------------------------------------
-  async function loadMenu() {
-    //await loadMenuMock();
-     await loadMenuApi();
+  function openCreateCategoryModal() {
+    resetMessages();
+    setCategoryModalMode("create");
+    setCategoryForm(emptyCategoryForm);
+    setCategoryModalOpen(true);
+    setCategoriesOpen(false);
   }
 
-  useEffect(() => {
-    if (!getAuth()) {
-      nav("/admin");
+  function openEditCategoryModal(category) {
+    if (!category) return;
+    resetMessages();
+    setCategoryModalMode("edit");
+    setCategoryForm({
+      name: category.name || "",
+      name1: category.name1 || "",
+      name2: category.name2 || "",
+      name3: category.name3 || "",
+      name4: category.name4 || "",
+    });
+    setCategoryModalOpen(true);
+    setCategoriesOpen(false);
+  }
+
+  function closeCategoryModal() {
+    setCategoryModalOpen(false);
+    setCategoryForm(emptyCategoryForm);
+  }
+
+  function openCreateItemModal() {
+    if (!selectedCat) {
+      setErr("Prvo odaberite kategoriju.");
       return;
     }
-    loadMenu();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api]);
 
-  useEffect(() => {
-    setCategoryDraftName(selectedCat?.name || "");
-
-    const drafts = {};
-    for (const item of selectedCat?.items || []) {
-      drafts[item.id] = {
-        name: item.name || "",
-        name1: item.name1 || "",
-        name2: item.name2 || "",
-        name3: item.name3 || "",
-        name4: item.name4 || "",
-        imageUrl: item.imageUrl || "",
-        price: item.price != null ? String(item.price) : "",
-      };
-    }
-    setItemDrafts(drafts);
-    setOpenItemId("");
-  }, [selectedCat]);
-
-  function updateDraft(itemId, field, value) {
-    setItemDrafts((prev) => ({
-      ...prev,
-      [itemId]: {
-        ...(prev[itemId] || {}),
-        [field]: value,
-      },
-    }));
+    resetMessages();
+    setItemModalMode("create");
+    setItemForm(emptyItemForm);
+    setShowItemTranslations(false);
+    setItemModalOpen(true);
   }
 
-  function getItemDraft(item) {
-    return (
-      itemDrafts[item.id] || {
-        name: item.name || "",
-        name1: item.name1 || "",
-        name2: item.name2 || "",
-        name3: item.name3 || "",
-        name4: item.name4 || "",
-        imageUrl: item.imageUrl || "",
-        price: item.price != null ? String(item.price) : "",
-      }
+  function openEditItemModal(item) {
+    if (!item) return;
+
+    resetMessages();
+    setItemModalMode("edit");
+    setItemForm({
+      id: item.id || "",
+      name: item.name || "",
+      name1: item.name1 || "",
+      name2: item.name2 || "",
+      name3: item.name3 || "",
+      name4: item.name4 || "",
+      imageUrl: item.imageUrl || "",
+      price: item.price != null ? String(item.price) : "",
+    });
+    setShowItemTranslations(
+      Boolean(item.name1 || item.name2 || item.name3 || item.name4)
     );
+    setItemModalOpen(true);
+  }
+
+  function closeItemModal() {
+    setItemModalOpen(false);
+    setItemForm(emptyItemForm);
+    setShowItemTranslations(false);
   }
 
   async function createCategory() {
-    const name = newCat.trim();
-    if (!name) return;
+    const name = categoryForm.name.trim();
+    if (!name) return setErr("Naziv kategorije je obavezan.");
 
     resetMessages();
     setIsCreatingCategory(true);
@@ -206,20 +227,22 @@ export default function AdminMenuPage() {
       const r = await authedFetch(`${api}/menu-category`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({
+          name,
+          name1: categoryForm.name1.trim(),
+          name2: categoryForm.name2.trim(),
+          name3: categoryForm.name3.trim(),
+          name4: categoryForm.name4.trim(),
+        }),
       });
 
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
-      setNewCat("");
       setSuccess("Kategorija je uspješno dodana.");
+      closeCategoryModal();
       await loadMenu();
-
-      if (data?.id) {
-        setSelectedCatId(data.id);
-        setMobileTab("category");
-      }
+      if (data?.id) setSelectedCatId(data.id);
     } catch (e) {
       setErr(String(e.message || e));
     } finally {
@@ -227,11 +250,11 @@ export default function AdminMenuPage() {
     }
   }
 
-  async function saveCategoryName() {
-    const newName = String(categoryDraftName || "").trim();
+  async function saveCategory() {
     if (!selectedCat) return;
-    if (!newName) return setErr("Naziv kategorije je obavezan.");
-    if (newName === selectedCat.name) return;
+
+    const name = categoryForm.name.trim();
+    if (!name) return setErr("Naziv kategorije je obavezan.");
 
     resetMessages();
     setIsSavingCategory(true);
@@ -240,13 +263,20 @@ export default function AdminMenuPage() {
       const r = await authedFetch(`${api}/menu-category/${selectedCat.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName }),
+        body: JSON.stringify({
+          name,
+          name1: categoryForm.name1.trim(),
+          name2: categoryForm.name2.trim(),
+          name3: categoryForm.name3.trim(),
+          name4: categoryForm.name4.trim(),
+        }),
       });
 
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       setSuccess("Kategorija je uspješno izmijenjena.");
+      closeCategoryModal();
       await loadMenu();
     } catch (e) {
       setErr(String(e.message || e));
@@ -256,7 +286,9 @@ export default function AdminMenuPage() {
   }
 
   async function deleteCategory(id) {
-    if (!confirm("Obrisati ovu kategoriju? (Svi artikli će biti obrisani)")) return;
+    if (!window.confirm("Obrisati ovu kategoriju? Svi artikli u njoj će biti obrisani.")) {
+      return;
+    }
 
     resetMessages();
     setDeletingCategoryId(id);
@@ -280,8 +312,8 @@ export default function AdminMenuPage() {
   }
 
   async function createItem() {
-    const name = newItemName.trim();
-    const price = Number(newItemPrice);
+    const name = itemForm.name.trim();
+    const price = Number(itemForm.price);
 
     if (!selectedCatId) return setErr("Prvo odaberite kategoriju.");
     if (!name) return setErr("Osnovni naziv artikla je obavezan.");
@@ -298,11 +330,11 @@ export default function AdminMenuPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          name1: newItemName1.trim(),
-          name2: newItemName2.trim(),
-          name3: newItemName3.trim(),
-          name4: newItemName4.trim(),
-          imageUrl: newItemImage.trim(),
+          name1: itemForm.name1.trim(),
+          name2: itemForm.name2.trim(),
+          name3: itemForm.name3.trim(),
+          name4: itemForm.name4.trim(),
+          imageUrl: itemForm.imageUrl.trim(),
           price,
           categoryId: selectedCatId,
         }),
@@ -311,17 +343,9 @@ export default function AdminMenuPage() {
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
-      setNewItemName("");
-      setNewItemName1("");
-      setNewItemName2("");
-      setNewItemName3("");
-      setNewItemName4("");
-      setNewItemImage("");
-      setNewItemPrice("");
-      setShowNewTranslations(false);
       setSuccess("Artikal je uspješno dodan.");
+      closeItemModal();
       await loadMenu();
-      setMobileTab("items");
     } catch (e) {
       setErr(String(e.message || e));
     } finally {
@@ -329,39 +353,39 @@ export default function AdminMenuPage() {
     }
   }
 
-  async function saveItem(item) {
-    const draft = getItemDraft(item);
-    const price = Number(draft.price);
+  async function saveItem() {
+    const name = itemForm.name.trim();
+    const price = Number(itemForm.price);
 
-    if (!draft.name.trim()) return setErr("Osnovni naziv artikla je obavezan.");
+    if (!itemForm.id) return;
+    if (!name) return setErr("Osnovni naziv artikla je obavezan.");
     if (!Number.isFinite(price) || price <= 0) {
       return setErr("Cijena mora biti veća od 0.");
     }
 
-    const patch = {
-      name: draft.name.trim(),
-      name1: draft.name1.trim(),
-      name2: draft.name2.trim(),
-      name3: draft.name3.trim(),
-      name4: draft.name4.trim(),
-      imageUrl: draft.imageUrl.trim(),
-      price,
-    };
-
     resetMessages();
-    setSavingItemId(item.id);
+    setSavingItemId(itemForm.id);
 
     try {
-      const r = await authedFetch(`${api}/menu-item/${item.id}`, {
+      const r = await authedFetch(`${api}/menu-item/${itemForm.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
+        body: JSON.stringify({
+          name,
+          name1: itemForm.name1.trim(),
+          name2: itemForm.name2.trim(),
+          name3: itemForm.name3.trim(),
+          name4: itemForm.name4.trim(),
+          imageUrl: itemForm.imageUrl.trim(),
+          price,
+        }),
       });
 
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
-      setSuccess(`Artikal "${patch.name}" je sačuvan.`);
+      setSuccess(`Artikal "${name}" je sačuvan.`);
+      closeItemModal();
       await loadMenu();
     } catch (e) {
       setErr(String(e.message || e));
@@ -371,7 +395,7 @@ export default function AdminMenuPage() {
   }
 
   async function deleteItem(id) {
-    if (!confirm("Obrisati ovaj artikal?")) return;
+    if (!window.confirm("Obrisati ovaj artikal?")) return;
 
     resetMessages();
     setDeletingItemId(id);
@@ -396,460 +420,568 @@ export default function AdminMenuPage() {
   return (
     <div className="adminMenuPage">
       <div className="adminMenuShell">
-        <div className="adminMenuTopbar">
+        <header className="adminMenuTopbar">
           <div>
-            <div className="adminMenuKicker">Tap2Order Monti</div>
+            <div className="adminMenuKicker">Tap2Order Admin</div>
             <h1 className="adminMenuTitle">Room Service Menu</h1>
             <p className="adminMenuSubtitle">
-              Čišći pregled kategorija i artikala, sa manje haosa na ekranu.
+              Uredi kategorije, artikle, cijene, slike i prevode za hotelski meni.
             </p>
           </div>
 
-          <button className="adminMenuBtn adminMenuBtnGhost" onClick={loadMenu}>
-            Osvježi
-          </button>
-        </div>
+          <div className="adminMenuTopActions">
+            <button
+              type="button"
+              className="adminMenuBtn adminMenuBtnGhost"
+              onClick={loadMenu}
+              disabled={loading}
+            >
+              {loading ? "Učitavanje..." : "Osvježi"}
+            </button>
+
+            <button
+              type="button"
+              className="adminMenuBtn adminMenuBtnPrimary"
+              onClick={openCreateCategoryModal}
+            >
+              + Kategorija
+            </button>
+          </div>
+        </header>
 
         {err && <div className="adminMenuAlert adminMenuAlertError">{err}</div>}
         {success && (
           <div className="adminMenuAlert adminMenuAlertSuccess">{success}</div>
         )}
 
-        {loading ? (
-          <div className="adminMenuPanel">Učitavanje…</div>
-        ) : (
-          <>
-            <section className="adminMenuPanel adminMenuCategoriesPanel">
-              <div className="adminMenuSectionHead">
+        <section className="adminMenuStatsGrid" aria-label="Pregled menija">
+          <div className="adminMenuStatCard">
+            <span>Kategorije</span>
+            <strong>{menu.length}</strong>
+          </div>
+
+          <div className="adminMenuStatCard">
+            <span>Artikli</span>
+            <strong>{totalItems}</strong>
+          </div>
+
+          <div className="adminMenuStatCard adminMenuStatCardWide">
+            <span>Trenutno otvoreno</span>
+            <strong>{selectedCat ? selectedCat.name : "Nema kategorije"}</strong>
+          </div>
+        </section>
+
+        <main className="adminMenuLayout">
+          <section className="adminMenuPanel adminMenuCategoryPanel">
+            <div className="adminMenuSectionHead">
+              <div>
                 <h2 className="adminMenuSectionTitle">Kategorije</h2>
-                <span className="adminMenuMuted">{menu.length} ukupno</span>
-              </div>
-
-              <div className="adminMenuToolbarGrid">
-                <div className="adminMenuField">
-                  <label className="adminMenuLabel">Odaberi kategoriju</label>
-                  <select
-                    className="adminMenuSelect"
-                    value={selectedCatId}
-                    onChange={(e) => setSelectedCatId(e.target.value)}
-                  >
-                    <option value="">Odaberi kategoriju</option>
-                    {menu.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.items?.length ?? 0})
-                      </option>
-                    ))}
-                  </select>
+                <div className="adminMenuMuted">
+                  Izaberi kategoriju koju želiš uređivati.
                 </div>
+              </div>
+            </div>
 
-                <div className="adminMenuField">
-                  <label className="adminMenuLabel">Dodaj kategoriju</label>
-                  <div className="adminMenuInlineRow">
-                    <input
-                      className="adminMenuInput"
-                      placeholder="Nova kategorija"
-                      value={newCat}
-                      onChange={(e) => setNewCat(e.target.value)}
-                    />
+            <div className="adminMenuDropdownWrap" ref={dropdownRef}>
+              <button
+                type="button"
+                className="adminMenuCategoryButton"
+                onClick={() => setCategoriesOpen((v) => !v)}
+                aria-expanded={categoriesOpen}
+              >
+                <span>{selectedCat ? selectedCat.name : "Odaberi kategoriju"}</span>
+                <span className="adminMenuChevron">▾</span>
+              </button>
+
+              {categoriesOpen && (
+                <>
+                  <div
+                    className="adminMenuDropdownBackdrop"
+                    onClick={() => setCategoriesOpen(false)}
+                  />
+
+                  <div className="adminMenuDropdownMenu">
                     <button
-                      className="adminMenuBtn adminMenuBtnPrimary"
-                      onClick={createCategory}
-                      disabled={isCreatingCategory}
+                      type="button"
+                      className="adminMenuDropdownAdd"
+                      onClick={openCreateCategoryModal}
                     >
-                      {isCreatingCategory ? "..." : "Dodaj"}
+                      + Dodaj kategoriju
                     </button>
+
+                    <div className="adminMenuDropdownList">
+                      {menu.length === 0 ? (
+                        <div className="adminMenuEmpty adminMenuEmptySmall">
+                          Nema kategorija. Dodaj prvu kategoriju.
+                        </div>
+                      ) : (
+                        menu.map((cat) => (
+                          <div key={cat.id} className="adminMenuDropdownItem">
+                            <button
+                              type="button"
+                              className={`adminMenuDropdownSelect ${
+                                selectedCatId === cat.id ? "is-active" : ""
+                              }`}
+                              onClick={() => {
+                                setSelectedCatId(cat.id);
+                                setCategoriesOpen(false);
+                              }}
+                            >
+                              <span className="adminMenuDropdownName">{cat.name}</span>
+                              <span className="adminMenuDropdownMeta">
+                                {cat.items?.length || 0}
+                              </span>
+                            </button>
+
+                            <div className="adminMenuDropdownActions">
+                              <button
+                                type="button"
+                                className="adminMenuMiniBtn"
+                                onClick={() => openEditCategoryModal(cat)}
+                              >
+                                Uredi
+                              </button>
+
+                              <button
+                                type="button"
+                                className="adminMenuMiniBtn adminMenuMiniBtnDanger"
+                                onClick={() => deleteCategory(cat.id)}
+                                disabled={deletingCategoryId === cat.id}
+                              >
+                                {deletingCategoryId === cat.id ? "..." : "Obriši"}
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
+                </>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="adminMenuBtn adminMenuBtnPrimary adminMenuFullButton"
+              onClick={openCreateCategoryModal}
+            >
+              + Nova kategorija
+            </button>
+          </section>
+
+          <section className="adminMenuPanel adminMenuItemsPanel">
+            <div className="adminMenuSectionHead">
+              <div>
+                <h2 className="adminMenuSectionTitle">Artikli</h2>
+                <div className="adminMenuMuted">
+                  {selectedCat
+                    ? `${selectedCat.name} • ${selectedCat.items?.length || 0} artikala`
+                    : "Odaberi kategoriju da vidiš artikle"}
                 </div>
               </div>
-            </section>
 
-            <div className="adminMenuMobileTabs">
               <button
-                className={`adminMenuMobileTab ${mobileTab === "category" ? "is-active" : ""}`}
-                onClick={() => setMobileTab("category")}
+                type="button"
+                className="adminMenuBtn adminMenuBtnPrimary"
+                onClick={openCreateItemModal}
+                disabled={!selectedCat}
               >
-                Kategorija
-              </button>
-              <button
-                className={`adminMenuMobileTab ${mobileTab === "new" ? "is-active" : ""}`}
-                onClick={() => setMobileTab("new")}
-              >
-                Novi artikal
-              </button>
-              <button
-                className={`adminMenuMobileTab ${mobileTab === "items" ? "is-active" : ""}`}
-                onClick={() => setMobileTab("items")}
-              >
-                Artikli
+                + Artikal
               </button>
             </div>
 
-            <div className="adminMenuContentGrid">
-              <div className="adminMenuLeftColumn">
-                <section
-                  className={`adminMenuPanel ${
-                    mobileTab === "category"
-                      ? "is-mobile-section-visible"
-                      : "is-mobile-section-hidden"
-                  }`}
+            {loading ? (
+              <div className="adminMenuEmpty adminMenuEmptyBox">Učitavam meni...</div>
+            ) : !selectedCat ? (
+              <div className="adminMenuEmpty adminMenuEmptyBox">
+                Prvo odaberi kategoriju sa lijeve strane.
+              </div>
+            ) : (selectedCat.items || []).length === 0 ? (
+              <div className="adminMenuEmpty adminMenuEmptyBox">
+                Ova kategorija još nema artikala.
+              </div>
+            ) : (
+              <div className="adminMenuItemsList">
+                {(selectedCat.items || []).map((it, index) => (
+                  <article key={it.id} className="adminMenuItemCard">
+                    <div className="adminMenuItemMedia">
+                      {it.imageUrl ? (
+                        <img src={it.imageUrl} alt={it.name} />
+                      ) : (
+                        <span>{String(it.name || "?").charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+
+                    <div className="adminMenuItemContent">
+                      <div className="adminMenuItemIndex">
+                        {index + 1}. {it.name}
+                      </div>
+                      <div className="adminMenuItemMeta">
+                        {it.name1 || it.name2 || it.name3 || it.name4
+                          ? "Prevodi uneseni"
+                          : "Bez prevoda"}
+                      </div>
+                    </div>
+
+                    <div className="adminMenuItemRight">
+                      <div className="adminMenuPrice">{it.price} KM</div>
+
+                      <div className="adminMenuItemActions">
+                        <button
+                          type="button"
+                          className="adminMenuBtn adminMenuBtnGhost"
+                          onClick={() => openEditItemModal(it)}
+                        >
+                          Uredi
+                        </button>
+
+                        <button
+                          type="button"
+                          className="adminMenuBtn adminMenuBtnDanger"
+                          onClick={() => deleteItem(it.id)}
+                          disabled={deletingItemId === it.id}
+                        >
+                          {deletingItemId === it.id ? "Brisanje..." : "Obriši"}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
+
+        {categoryModalOpen && (
+          <div className="adminMenuModalOverlay" onClick={closeCategoryModal}>
+            <div className="adminMenuModal" onClick={(e) => e.stopPropagation()}>
+              <div className="adminMenuModalHead">
+                <div>
+                  <h3 className="adminMenuModalTitle">
+                    {categoryModalMode === "create"
+                      ? "Dodaj kategoriju"
+                      : "Uredi kategoriju"}
+                  </h3>
+                  <div className="adminMenuMuted">Osnovni naziv je obavezan.</div>
+                </div>
+
+                <button
+                  type="button"
+                  className="adminMenuModalClose"
+                  onClick={closeCategoryModal}
                 >
-                  <div className="adminMenuSectionHead">
-                    <h2 className="adminMenuSectionTitle">Odabrana kategorija</h2>
-                    <span className="adminMenuMuted">
-                      {selectedCat ? `${selectedCat.items?.length || 0} artikala` : "—"}
-                    </span>
+                  ✕
+                </button>
+              </div>
+
+              <div className="adminMenuModalBody">
+                <div className="adminMenuField adminMenuFieldFull">
+                  <label className="adminMenuLabel">Osnovni naziv</label>
+                  <input
+                    className="adminMenuInput"
+                    value={categoryForm.name}
+                    onChange={(e) =>
+                      setCategoryForm((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    placeholder="npr. Pića"
+                  />
+                </div>
+
+                <div className="adminMenuFormGrid">
+                  <div className="adminMenuField">
+                    <label className="adminMenuLabel">English</label>
+                    <input
+                      className="adminMenuInput"
+                      value={categoryForm.name1}
+                      onChange={(e) =>
+                        setCategoryForm((prev) => ({
+                          ...prev,
+                          name1: e.target.value,
+                        }))
+                      }
+                      placeholder="Drinks"
+                    />
                   </div>
 
-                  {!selectedCat ? (
-                    <div className="adminMenuEmpty">Odaberi kategoriju iznad.</div>
-                  ) : (
-                    <div className="adminMenuCategoryEdit">
+                  <div className="adminMenuField">
+                    <label className="adminMenuLabel">Deutsch</label>
+                    <input
+                      className="adminMenuInput"
+                      value={categoryForm.name2}
+                      onChange={(e) =>
+                        setCategoryForm((prev) => ({
+                          ...prev,
+                          name2: e.target.value,
+                        }))
+                      }
+                      placeholder="Getränke"
+                    />
+                  </div>
+
+                  <div className="adminMenuField">
+                    <label className="adminMenuLabel">Arabic</label>
+                    <input
+                      className="adminMenuInput"
+                      value={categoryForm.name3}
+                      onChange={(e) =>
+                        setCategoryForm((prev) => ({
+                          ...prev,
+                          name3: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="adminMenuField">
+                    <label className="adminMenuLabel">French</label>
+                    <input
+                      className="adminMenuInput"
+                      value={categoryForm.name4}
+                      onChange={(e) =>
+                        setCategoryForm((prev) => ({
+                          ...prev,
+                          name4: e.target.value,
+                        }))
+                      }
+                      placeholder="Boissons"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="adminMenuModalFooter">
+                <button
+                  type="button"
+                  className="adminMenuBtn adminMenuBtnGhost"
+                  onClick={closeCategoryModal}
+                >
+                  Otkaži
+                </button>
+
+                <button
+                  type="button"
+                  className="adminMenuBtn adminMenuBtnPrimary"
+                  onClick={
+                    categoryModalMode === "create" ? createCategory : saveCategory
+                  }
+                  disabled={
+                    categoryModalMode === "create"
+                      ? isCreatingCategory
+                      : isSavingCategory
+                  }
+                >
+                  {categoryModalMode === "create"
+                    ? isCreatingCategory
+                      ? "Dodavanje..."
+                      : "Dodaj"
+                    : isSavingCategory
+                      ? "Čuvanje..."
+                      : "Sačuvaj"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {itemModalOpen && (
+          <div className="adminMenuModalOverlay" onClick={closeItemModal}>
+            <div
+              className="adminMenuModal adminMenuModalWide"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="adminMenuModalHead">
+                <div>
+                  <h3 className="adminMenuModalTitle">
+                    {itemModalMode === "create" ? "Dodaj artikal" : "Uredi artikal"}
+                  </h3>
+                  <div className="adminMenuMuted">
+                    {selectedCat ? selectedCat.name : "Room service menu"}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="adminMenuModalClose"
+                  onClick={closeItemModal}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="adminMenuModalBody">
+                <div className="adminMenuFormGrid">
+                  <div className="adminMenuField adminMenuFieldFull">
+                    <label className="adminMenuLabel">Naziv artikla</label>
+                    <input
+                      className="adminMenuInput"
+                      value={itemForm.name}
+                      onChange={(e) =>
+                        setItemForm((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      placeholder="npr. Palačinke Nutella"
+                    />
+                  </div>
+
+                  <div className="adminMenuField">
+                    <label className="adminMenuLabel">Cijena</label>
+                    <input
+                      className="adminMenuInput"
+                      value={itemForm.price}
+                      onChange={(e) =>
+                        setItemForm((prev) => ({
+                          ...prev,
+                          price: e.target.value,
+                        }))
+                      }
+                      placeholder="npr. 7.50"
+                      inputMode="decimal"
+                    />
+                  </div>
+
+                  <div className="adminMenuField">
+                    <label className="adminMenuLabel">Slika artikla</label>
+                    <input
+                      className="adminMenuInput adminMenuFileInput"
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        try {
+                          const base64 = await fileToBase64(file);
+                          setItemForm((prev) => ({
+                            ...prev,
+                            imageUrl: base64,
+                          }));
+                        } catch {
+                          setErr("Upload slike nije uspio.");
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {itemForm.imageUrl && (
+                    <div className="adminMenuUploadPreview adminMenuFieldFull">
+                      <img
+                        src={itemForm.imageUrl}
+                        alt={itemForm.name || "Preview"}
+                        className="adminMenuPreviewImage"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="adminMenuToggleBtn"
+                  onClick={() => setShowItemTranslations((v) => !v)}
+                >
+                  {showItemTranslations ? "Sakrij prevode" : "Prikaži prevode"}
+                </button>
+
+                {showItemTranslations && (
+                  <div className="adminMenuTranslationsBox">
+                    <div className="adminMenuFormGrid">
                       <div className="adminMenuField">
-                        <label className="adminMenuLabel">Naziv kategorije</label>
+                        <label className="adminMenuLabel">English</label>
                         <input
                           className="adminMenuInput"
-                          value={categoryDraftName}
-                          onChange={(e) => setCategoryDraftName(e.target.value)}
-                          placeholder="Naziv kategorije"
+                          value={itemForm.name1}
+                          onChange={(e) =>
+                            setItemForm((prev) => ({
+                              ...prev,
+                              name1: e.target.value,
+                            }))
+                          }
+                          placeholder="English name"
                         />
                       </div>
 
-                      <div className="adminMenuActionRow">
-                        <button
-                          className="adminMenuBtn adminMenuBtnPrimary"
-                          onClick={saveCategoryName}
-                          disabled={isSavingCategory}
-                        >
-                          {isSavingCategory ? "Čuvanje..." : "Sačuvaj"}
-                        </button>
+                      <div className="adminMenuField">
+                        <label className="adminMenuLabel">Deutsch</label>
+                        <input
+                          className="adminMenuInput"
+                          value={itemForm.name2}
+                          onChange={(e) =>
+                            setItemForm((prev) => ({
+                              ...prev,
+                              name2: e.target.value,
+                            }))
+                          }
+                          placeholder="Deutscher Name"
+                        />
+                      </div>
 
-                        <button
-                          className="adminMenuBtn adminMenuBtnDanger"
-                          onClick={() => deleteCategory(selectedCat.id)}
-                          disabled={deletingCategoryId === selectedCat.id}
-                        >
-                          {deletingCategoryId === selectedCat.id ? "Brisanje..." : "Obriši"}
-                        </button>
+                      <div className="adminMenuField">
+                        <label className="adminMenuLabel">Arabic</label>
+                        <input
+                          className="adminMenuInput"
+                          value={itemForm.name3}
+                          onChange={(e) =>
+                            setItemForm((prev) => ({
+                              ...prev,
+                              name3: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div className="adminMenuField">
+                        <label className="adminMenuLabel">French</label>
+                        <input
+                          className="adminMenuInput"
+                          value={itemForm.name4}
+                          onChange={(e) =>
+                            setItemForm((prev) => ({
+                              ...prev,
+                              name4: e.target.value,
+                            }))
+                          }
+                          placeholder="Nom français"
+                        />
                       </div>
                     </div>
-                  )}
-                </section>
-
-                <section
-                  className={`adminMenuPanel ${
-                    mobileTab === "new"
-                      ? "is-mobile-section-visible"
-                      : "is-mobile-section-hidden"
-                  }`}
-                >
-                  <div className="adminMenuSectionHead">
-                    <h2 className="adminMenuSectionTitle">Dodaj novi artikal</h2>
-                    <span className="adminMenuMuted">
-                      {selectedCat ? selectedCat.name : "Odaberi kategoriju"}
-                    </span>
                   </div>
-
-                  {!selectedCat ? (
-                    <div className="adminMenuEmpty">
-                      Odaberi kategoriju da bi dodao artikal.
-                    </div>
-                  ) : (
-                    <>
-                      <div className="adminMenuCompactGrid">
-                        <div className="adminMenuField adminMenuFieldSpan2">
-                          <label className="adminMenuLabel">Naziv (BHS)</label>
-                          <input
-                            className="adminMenuInput"
-                            placeholder="npr. Palačinke Nutella"
-                            value={newItemName}
-                            onChange={(e) => setNewItemName(e.target.value)}
-                          />
-                        </div>
-
-                        <div className="adminMenuField">
-                          <label className="adminMenuLabel">Cijena</label>
-                          <input
-                            className="adminMenuInput"
-                            placeholder="npr. 7.5"
-                            value={newItemPrice}
-                            onChange={(e) => setNewItemPrice(e.target.value)}
-                          />
-                        </div>
-
-                        <div className="adminMenuField">
-                          <label className="adminMenuLabel">Slika artikla</label>
-                          <input
-                            className="adminMenuInput adminMenuFileInput"
-                            type="file"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              try {
-                                const base64 = await fileToBase64(file);
-                                setNewItemImage(base64);
-                              } catch {
-                                setErr("Upload slike nije uspio.");
-                              }
-                            }}
-                          />
-                          {newItemImage && (
-                            <div className="adminMenuUploadPreview">
-                              <img
-                                src={newItemImage}
-                                alt="Preview"
-                                className="adminMenuPreviewImage"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="adminMenuToggleBtn"
-                        onClick={() => setShowNewTranslations((v) => !v)}
-                      >
-                        {showNewTranslations ? "Sakrij prevode" : "Prikaži prevode"}
-                      </button>
-
-                      {showNewTranslations && (
-                        <div className="adminMenuTranslationsBox">
-                          <div className="adminMenuCompactGrid">
-                            <div className="adminMenuField">
-                              <label className="adminMenuLabel">English</label>
-                              <input
-                                className="adminMenuInput"
-                                value={newItemName1}
-                                onChange={(e) => setNewItemName1(e.target.value)}
-                              />
-                            </div>
-
-                            <div className="adminMenuField">
-                              <label className="adminMenuLabel">Deutsch</label>
-                              <input
-                                className="adminMenuInput"
-                                value={newItemName2}
-                                onChange={(e) => setNewItemName2(e.target.value)}
-                              />
-                            </div>
-
-                            <div className="adminMenuField">
-                              <label className="adminMenuLabel">Italiano</label>
-                              <input
-                                className="adminMenuInput"
-                                value={newItemName3}
-                                onChange={(e) => setNewItemName3(e.target.value)}
-                              />
-                            </div>
-
-                            <div className="adminMenuField">
-                              <label className="adminMenuLabel">Français</label>
-                              <input
-                                className="adminMenuInput"
-                                value={newItemName4}
-                                onChange={(e) => setNewItemName4(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="adminMenuActionRow">
-                        <button
-                          className="adminMenuBtn adminMenuBtnPrimary"
-                          onClick={createItem}
-                          disabled={isCreatingItem}
-                        >
-                          {isCreatingItem ? "Dodavanje..." : "Dodaj artikal"}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </section>
+                )}
               </div>
 
-              <div className={`adminMenuRightColumn ${mobileTab === "items" ? "is-mobile-visible" : ""}`}>
-                <section className="adminMenuPanel">
-                  <div className="adminMenuSectionHead">
-                    <h2 className="adminMenuSectionTitle">Postojeći artikli</h2>
-                    <span className="adminMenuMuted">
-                      {selectedCat
-                        ? `${selectedCat.items?.length || 0} u kategoriji`
-                        : "Odaberi kategoriju"}
-                    </span>
-                  </div>
+              <div className="adminMenuModalFooter">
+                <button
+                  type="button"
+                  className="adminMenuBtn adminMenuBtnGhost"
+                  onClick={closeItemModal}
+                >
+                  Otkaži
+                </button>
 
-                  {!selectedCat ? (
-                    <div className="adminMenuEmpty">Odaberi kategoriju iznad.</div>
-                  ) : (selectedCat.items || []).length === 0 ? (
-                    <div className="adminMenuEmpty">
-                      Još nema artikala u ovoj kategoriji.
-                    </div>
-                  ) : (
-                    <div className="adminMenuItemsList">
-                      {(selectedCat.items || []).map((it, index) => {
-                        const draft = getItemDraft(it);
-                        const isSaving = savingItemId === it.id;
-                        const isDeleting = deletingItemId === it.id;
-                        const isOpen = openItemId === it.id;
-
-                        return (
-                          <article key={it.id} className="adminMenuItemCard">
-                            <div className="adminMenuItemHeadCompact">
-                              <div>
-                                <div className="adminMenuItemIndex">
-                                  {index + 1}. {draft.name || it.name}
-                                </div>
-                                <div className="adminMenuItemMeta">ID: {it.id}</div>
-                              </div>
-
-                              <div className="adminMenuItemHeadRight">
-                                <div className="adminMenuPriceBadge">
-                                  {draft.price || it.price} KM
-                                </div>
-                                <button
-                                  type="button"
-                                  className="adminMenuToggleBtn adminMenuToggleBtnSmall"
-                                  onClick={() =>
-                                    setOpenItemId((prev) => (prev === it.id ? "" : it.id))
-                                  }
-                                >
-                                  {isOpen ? "Sakrij detalje" : "Uredi"}
-                                </button>
-                              </div>
-                            </div>
-
-                            {isOpen && (
-                              <>
-                                <div className="adminMenuItemEditorGrid">
-                                  <div className="adminMenuField adminMenuFieldSpan2">
-                                    <label className="adminMenuLabel">Naziv (BHS)</label>
-                                    <input
-                                      className="adminMenuInput"
-                                      value={draft.name}
-                                      onChange={(e) =>
-                                        updateDraft(it.id, "name", e.target.value)
-                                      }
-                                    />
-                                  </div>
-
-                                  <div className="adminMenuField">
-                                    <label className="adminMenuLabel">Cijena</label>
-                                    <input
-                                      className="adminMenuInput"
-                                      value={draft.price}
-                                      onChange={(e) =>
-                                        updateDraft(it.id, "price", e.target.value)
-                                      }
-                                    />
-                                  </div>
-
-                                  <div className="adminMenuField">
-                                    <label className="adminMenuLabel">Slika artikla</label>
-                                    <input
-                                      className="adminMenuInput adminMenuFileInput"
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        try {
-                                          const base64 = await fileToBase64(file);
-                                          updateDraft(it.id, "imageUrl", base64);
-                                        } catch {
-                                          setErr("Upload slike nije uspio.");
-                                        }
-                                      }}
-                                    />
-                                    {draft.imageUrl && (
-                                      <div className="adminMenuUploadPreview">
-                                        <img
-                                          src={draft.imageUrl}
-                                          alt={draft.name || it.name}
-                                          className="adminMenuPreviewImage"
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="adminMenuTranslationsBox">
-                                  <div className="adminMenuCompactGrid">
-                                    <div className="adminMenuField">
-                                      <label className="adminMenuLabel">English</label>
-                                      <input
-                                        className="adminMenuInput"
-                                        value={draft.name1}
-                                        onChange={(e) =>
-                                          updateDraft(it.id, "name1", e.target.value)
-                                        }
-                                      />
-                                    </div>
-
-                                    <div className="adminMenuField">
-                                      <label className="adminMenuLabel">Deutsch</label>
-                                      <input
-                                        className="adminMenuInput"
-                                        value={draft.name2}
-                                        onChange={(e) =>
-                                          updateDraft(it.id, "name2", e.target.value)
-                                        }
-                                      />
-                                    </div>
-
-                                    <div className="adminMenuField">
-                                      <label className="adminMenuLabel">Italiano</label>
-                                      <input
-                                        className="adminMenuInput"
-                                        value={draft.name3}
-                                        onChange={(e) =>
-                                          updateDraft(it.id, "name3", e.target.value)
-                                        }
-                                      />
-                                    </div>
-
-                                    <div className="adminMenuField">
-                                      <label className="adminMenuLabel">Français</label>
-                                      <input
-                                        className="adminMenuInput"
-                                        value={draft.name4}
-                                        onChange={(e) =>
-                                          updateDraft(it.id, "name4", e.target.value)
-                                        }
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="adminMenuActionRow">
-                                  <button
-                                    className="adminMenuBtn adminMenuBtnPrimary"
-                                    onClick={() => saveItem(it)}
-                                    disabled={isSaving}
-                                  >
-                                    {isSaving ? "Čuvanje..." : "Sačuvaj"}
-                                  </button>
-
-                                  <button
-                                    className="adminMenuBtn adminMenuBtnDanger"
-                                    onClick={() => deleteItem(it.id)}
-                                    disabled={isDeleting}
-                                  >
-                                    {isDeleting ? "Brisanje..." : "Obriši"}
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
+                <button
+                  type="button"
+                  className="adminMenuBtn adminMenuBtnPrimary"
+                  onClick={itemModalMode === "create" ? createItem : saveItem}
+                  disabled={
+                    itemModalMode === "create"
+                      ? isCreatingItem
+                      : savingItemId === itemForm.id
+                  }
+                >
+                  {itemModalMode === "create"
+                    ? isCreatingItem
+                      ? "Dodavanje..."
+                      : "Dodaj"
+                    : savingItemId === itemForm.id
+                      ? "Čuvanje..."
+                      : "Sačuvaj"}
+                </button>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

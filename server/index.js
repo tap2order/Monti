@@ -201,10 +201,21 @@ app.get("/menu", async (req, res) => {
 app.post("/menu-category", requireAdmin, async (req, res) => {
   try {
     const name = String(req.body?.name || "").trim();
+    const name1 = req.body?.name1 !== undefined ? String(req.body.name1).trim() : null;
+    const name2 = req.body?.name2 !== undefined ? String(req.body.name2).trim() : null;
+    const name3 = req.body?.name3 !== undefined ? String(req.body.name3).trim() : null;
+    const name4 = req.body?.name4 !== undefined ? String(req.body.name4).trim() : null;
+
     if (!name) return res.status(400).json({ error: "Name is required" });
 
     const created = await prisma.menuCategory.create({
-      data: { name },
+      data: {
+        name,
+        name1: name1 || null,
+        name2: name2 || null,
+        name3: name3 || null,
+        name4: name4 || null,
+      },
     });
 
     res.status(201).json(created);
@@ -220,12 +231,28 @@ app.post("/menu-category", requireAdmin, async (req, res) => {
 app.put("/menu-category/:id", requireAdmin, async (req, res) => {
   try {
     const id = String(req.params.id);
-    const name = String(req.body?.name || "").trim();
-    if (!name) return res.status(400).json({ error: "Name is required" });
+
+    const name = req.body?.name !== undefined ? String(req.body.name).trim() : undefined;
+    const name1 = req.body?.name1 !== undefined ? String(req.body.name1).trim() : undefined;
+    const name2 = req.body?.name2 !== undefined ? String(req.body.name2).trim() : undefined;
+    const name3 = req.body?.name3 !== undefined ? String(req.body.name3).trim() : undefined;
+    const name4 = req.body?.name4 !== undefined ? String(req.body.name4).trim() : undefined;
+
+    const data = {};
+
+    if (name !== undefined) {
+      if (!name) return res.status(400).json({ error: "Name cannot be empty" });
+      data.name = name;
+    }
+
+    if (name1 !== undefined) data.name1 = name1 || null;
+    if (name2 !== undefined) data.name2 = name2 || null;
+    if (name3 !== undefined) data.name3 = name3 || null;
+    if (name4 !== undefined) data.name4 = name4 || null;
 
     const updated = await prisma.menuCategory.update({
       where: { id },
-      data: { name },
+      data,
     });
 
     res.json(updated);
