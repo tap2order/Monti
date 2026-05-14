@@ -255,6 +255,17 @@ export default function TablePage() {
     return item.name;
   };
 
+  const getCategoryName = (category) => {
+    if (!category) return "";
+
+    if (lang === 1 && category.name1) return category.name1;
+    if (lang === 2 && category.name2) return category.name2;
+    if (lang === 3 && category.name3) return category.name3;
+    if (lang === 4 && category.name4) return category.name4;
+
+    return category.name;
+  };
+
   const openCategory = (cat) => {
     const params = new URLSearchParams(searchParams);
     params.set("category", cat);
@@ -282,7 +293,12 @@ export default function TablePage() {
       .finally(() => setLoading(false));
   }, [api]);
 
-  const categories = useMemo(() => menu.map((c) => c.name), [menu]);
+  const categories = useMemo(() => menu, [menu]);
+
+  const selectedCategoryObject = useMemo(() => {
+    if (!selectedCategory) return null;
+    return menu.find((c) => c.name === selectedCategory) || null;
+  }, [menu, selectedCategory]);
 
   const itemsForSelected = useMemo(() => {
     if (!selectedCategory) return [];
@@ -526,7 +542,7 @@ export default function TablePage() {
               <div>
                 <div className="tp-kicker">{t.category}</div>
                 <h2 className="tp-h2" style={{ marginTop: 6 }}>
-                  {selectedCategory}
+                  {getCategoryName(selectedCategoryObject)}
                 </h2>
               </div>
             ) : (
@@ -550,17 +566,17 @@ export default function TablePage() {
           {!loading && !selectedCategory && (
             <div className="tp-categoriesGrid">
               {categories.map((cat) => {
-                const count = menu.find((c) => c.name === cat)?.items?.length || 0;
-                const accent = accentFromName(cat);
+                const count = cat?.items?.length || 0;
+                const accent = accentFromName(cat.name);
 
                 return (
                   <button
-                    key={cat}
+                    key={cat.id}
                     className="tp-categoryCard"
-                    onClick={() => openCategory(cat)}
+                    onClick={() => openCategory(cat.name)}
                     style={{ "--tp-accent": accent }}
                   >
-                    <div className="tp-categoryName">{cat}</div>
+                    <div className="tp-categoryName">{getCategoryName(cat)}</div>
                     <div className="tp-categoryMeta">
                       {count} {t.items}
                     </div>
@@ -577,7 +593,9 @@ export default function TablePage() {
                   <div className="tp-itemLeft">
                     <div className="tp-itemName">{getItemName(it)}</div>
                     <div className="tp-itemMeta">
-                      <span className="tp-metaPill">{selectedCategory}</span>
+                      <span className="tp-metaPill">
+                        {getCategoryName(selectedCategoryObject)}
+                      </span>
                     </div>
                   </div>
 

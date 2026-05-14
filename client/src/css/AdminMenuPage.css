@@ -1,120 +1,624 @@
 .adminMenuPage {
   min-height: 100vh;
-  padding: 16px;
-  color: #f3f4f6;
-  background: #111827;
+  padding: 22px;
   box-sizing: border-box;
+  color: #172033;
+  background: #f4f7fb;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
 .adminMenuShell {
-  max-width: 1380px;
+  width: 100%;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
 .adminMenuTopbar {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  gap: 14px;
+  justify-content: space-between;
+  gap: 18px;
   margin-bottom: 16px;
-  padding: 4px 2px;
+  padding: 22px;
+  border: 1px solid #e4eaf2;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+}
+
+.adminMenuTopActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .adminMenuKicker {
-  font-size: 11px;
+  margin-bottom: 8px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #9ca3af;
+  color: #2563eb;
 }
 
 .adminMenuTitle {
-  margin: 8px 0 0 0;
-  font-size: clamp(30px, 5vw, 42px);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(28px, 4vw, 42px);
   font-weight: 900;
-  color: #ffffff;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
 }
 
 .adminMenuSubtitle {
-  margin: 10px 0 0 0;
-  max-width: 680px;
-  color: #9ca3af;
+  max-width: 650px;
+  margin: 10px 0 0;
+  color: #64748b;
   font-size: 15px;
-  line-height: 1.65;
+  line-height: 1.6;
+}
+
+.adminMenuStatsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.adminMenuStatCard {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid #e4eaf2;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
+}
+
+.adminMenuStatCard span {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminMenuStatCard strong {
+  display: block;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminMenuStatCardWide strong {
+  font-size: 20px;
+}
+
+.adminMenuLayout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .adminMenuPanel {
-  background: #1f2937;
-  border: 1px solid #374151;
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+  min-width: 0;
+  border: 1px solid #e4eaf2;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.055);
 }
 
-.adminMenuCategoriesPanel {
-  margin-bottom: 16px;
+.adminMenuCategoryPanel,
+.adminMenuItemsPanel {
+  padding: 18px;
 }
 
 .adminMenuSectionHead {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 14px;
 }
 
 .adminMenuSectionTitle {
   margin: 0;
+  color: #0f172a;
   font-size: 18px;
   font-weight: 900;
-  letter-spacing: -0.02em;
-  color: #ffffff;
+  letter-spacing: -0.025em;
 }
 
 .adminMenuMuted {
-  color: #9ca3af;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.adminMenuBtn,
+.adminMenuMiniBtn,
+.adminMenuCategoryButton,
+.adminMenuToggleBtn,
+.adminMenuModalClose,
+.adminMenuDropdownAdd,
+.adminMenuDropdownSelect {
+  font-family: inherit;
+}
+
+.adminMenuBtn {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #172033;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  transition:
+    transform 0.14s ease,
+    border-color 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.adminMenuBtn:hover {
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.adminMenuBtn:active {
+  transform: scale(0.985);
+}
+
+.adminMenuBtn:disabled,
+.adminMenuMiniBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.adminMenuBtnPrimary {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.adminMenuBtnPrimary:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.adminMenuBtnGhost {
+  background: #f8fafc;
+}
+
+.adminMenuBtnDanger {
+  border-color: #fee2e2;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.adminMenuBtnDanger:hover {
+  border-color: #fecdd3;
+  background: #ffe4e6;
+}
+
+.adminMenuFullButton {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.adminMenuAlert {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.adminMenuAlertError {
+  border: 1px solid #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.adminMenuAlertSuccess {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.adminMenuDropdownWrap {
+  position: relative;
+  width: 100%;
+  z-index: 20;
+}
+
+.adminMenuCategoryButton {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #dbe3ee;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.adminMenuChevron {
+  color: #64748b;
   font-size: 13px;
 }
 
-.adminMenuToolbarGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+.adminMenuDropdownBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(15, 23, 42, 0.18);
 }
 
-.adminMenuInlineRow {
+.adminMenuDropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+}
+
+.adminMenuDropdownAdd {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-bottom: 1px solid #edf2f7;
+  background: #ffffff;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.adminMenuDropdownAdd:hover {
+  background: #f8fafc;
+}
+
+.adminMenuDropdownList {
+  max-height: 340px;
+  overflow: auto;
+  padding: 8px;
+}
+
+.adminMenuDropdownItem {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+}
+
+.adminMenuDropdownItem + .adminMenuDropdownItem {
+  margin-top: 4px;
+}
+
+.adminMenuDropdownSelect {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e4eaf2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #172033;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.adminMenuDropdownSelect:hover,
+.adminMenuDropdownSelect.is-active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.adminMenuDropdownName {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminMenuDropdownMeta {
+  min-width: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.adminMenuDropdownActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.adminMenuContentGrid {
-  display: grid;
-  grid-template-columns: 420px minmax(0, 1fr);
-  gap: 16px;
+.adminMenuMiniBtn {
+  min-height: 38px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #172033;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 850;
 }
 
-.adminMenuLeftColumn,
-.adminMenuRightColumn {
+.adminMenuMiniBtn:hover {
+  background: #eef2f7;
+}
+
+.adminMenuMiniBtnDanger {
+  border-color: #fee2e2;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.adminMenuMiniBtnDanger:hover {
+  background: #ffe4e6;
+}
+
+.adminMenuItemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adminMenuItemCard {
   display: grid;
-  gap: 16px;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #e4eaf2;
+  border-radius: 16px;
+  background: #ffffff;
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.14s ease;
+}
+
+.adminMenuItemCard:hover {
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.07);
+}
+
+.adminMenuItemMedia {
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid #e4eaf2;
+  border-radius: 14px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adminMenuItemMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.adminMenuItemMedia span {
+  color: #2563eb;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.adminMenuItemContent {
+  min-width: 0;
+}
+
+.adminMenuItemIndex {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminMenuItemMeta {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.adminMenuItemRight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.adminMenuPrice {
+  min-width: 76px;
+  padding: 9px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.adminMenuItemActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adminMenuEmpty {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.adminMenuEmptyBox,
+.adminMenuEmptySmall {
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.adminMenuEmptyBox {
+  padding: 28px 16px;
+}
+
+.adminMenuEmptySmall {
+  padding: 14px;
+}
+
+.adminMenuModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adminMenuModal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  border: 1px solid #e4eaf2;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+}
+
+.adminMenuModalWide {
+  width: min(760px, 100%);
+}
+
+.adminMenuModalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.adminMenuModalTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.adminMenuModalClose {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.adminMenuModalClose:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.adminMenuModalBody {
+  padding: 18px;
+}
+
+.adminMenuModalFooter {
+  padding: 14px 18px 18px;
+  border-top: 1px solid #edf2f7;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adminMenuFormGrid,
+.adminMenuCompactGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .adminMenuField {
+  min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
+.adminMenuFieldFull,
 .adminMenuFieldSpan2 {
-  grid-column: span 2;
+  grid-column: 1 / -1;
 }
 
 .adminMenuLabel {
+  color: #334155;
   font-size: 12px;
-  font-weight: 800;
-  color: #d1d5db;
+  font-weight: 850;
 }
 
 .adminMenuInput,
@@ -123,215 +627,26 @@
   min-width: 0;
   box-sizing: border-box;
   padding: 12px 13px;
+  border: 1px solid #dbe3ee;
   border-radius: 12px;
-  border: 1px solid #4b5563;
-  background: #111827;
-  color: #f9fafb;
   outline: none;
+  background: #ffffff;
+  color: #0f172a;
   font-size: 14px;
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    background 0.14s ease;
 }
 
 .adminMenuInput::placeholder {
-  color: #6b7280;
+  color: #94a3b8;
 }
 
 .adminMenuInput:focus,
 .adminMenuSelect:focus {
-  border-color: #6b7280;
-}
-
-.adminMenuSelect {
-  appearance: none;
-}
-
-.adminMenuCategoryEdit {
-  display: grid;
-  gap: 14px;
-}
-
-.adminMenuCompactGrid,
-.adminMenuItemEditorGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.adminMenuTranslationsBox {
-  margin-top: 14px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid #374151;
-  background: #111827;
-}
-
-.adminMenuToggleBtn {
-  margin-top: 14px;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid #4b5563;
-  background: #111827;
-  color: #e5e7eb;
-  cursor: pointer;
-  font-weight: 800;
-  transition: transform 0.16s ease, border-color 0.16s ease,
-    background 0.16s ease;
-}
-
-.adminMenuToggleBtn:hover {
-  transform: translateY(-1px);
-  background: #182131;
-}
-
-.adminMenuToggleBtnSmall {
-  min-height: 34px;
-  padding: 0 12px;
-  margin-top: 0;
-  font-size: 12px;
-}
-
-.adminMenuItemsList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.adminMenuItemCard {
-  border: 1px solid #374151;
-  border-radius: 16px;
-  background: #111827;
-  padding: 16px;
-}
-
-.adminMenuItemHeadCompact {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.adminMenuItemHeadRight {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.adminMenuItemIndex {
-  font-size: 16px;
-  font-weight: 900;
-  color: #ffffff;
-}
-
-.adminMenuItemMeta {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.adminMenuPriceBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: #374151;
-  color: #f3f4f6;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.adminMenuEmpty {
-  color: #9ca3af;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.adminMenuActionRow {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-}
-
-.adminMenuBtn {
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid #4b5563;
-  background: #374151;
-  color: #ffffff;
-  cursor: pointer;
-  font-weight: 800;
-  transition: transform 0.16s ease, background 0.16s ease,
-    border-color 0.16s ease;
-}
-
-.adminMenuBtn:hover {
-  transform: translateY(-1px);
-}
-
-.adminMenuBtn:active {
-  transform: scale(0.985);
-}
-
-.adminMenuBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.adminMenuBtnPrimary {
-  background: #e5e7eb;
-  color: #111827;
-  border-color: #d1d5db;
-}
-
-.adminMenuBtnPrimary:hover {
-  background: #f3f4f6;
-}
-
-.adminMenuBtnDanger {
-  background: #7f1d1d;
-  border-color: #991b1b;
-  color: #ffffff;
-}
-
-.adminMenuBtnDanger:hover {
-  background: #991b1b;
-}
-
-.adminMenuBtnGhost {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.adminMenuAlert {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.adminMenuAlertError {
-  border: 1px solid #7f1d1d;
-  background: #3b0d0d;
-  color: #fecaca;
-}
-
-.adminMenuAlertSuccess {
-  border: 1px solid #166534;
-  background: #0f2d1b;
-  color: #bbf7d0;
-}
-
-.adminMenuMobileTabs {
-  display: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
 .adminMenuFileInput {
@@ -339,63 +654,79 @@
 }
 
 .adminMenuUploadPreview {
-  margin-top: 10px;
-  padding: 10px;
-  border: 1px solid #374151;
-  border-radius: 12px;
-  background: #111827;
+  padding: 12px;
+  border: 1px solid #e4eaf2;
+  border-radius: 16px;
+  background: #f8fafc;
 }
 
 .adminMenuPreviewImage {
   display: block;
   width: 100%;
-  max-width: 220px;
-  height: 140px;
+  max-width: 240px;
+  height: 150px;
   object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid #4b5563;
+  border: 1px solid #e4eaf2;
+  border-radius: 14px;
+  background: #ffffff;
 }
 
-@media (max-width: 1100px) {
-  .adminMenuContentGrid {
-    grid-template-columns: 1fr;
-  }
+.adminMenuToggleBtn {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 14px;
+  padding: 0 14px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #172033;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.adminMenuToggleBtn:hover {
+  background: #eef2f7;
+}
+
+.adminMenuTranslationsBox {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #e4eaf2;
+  border-radius: 16px;
+  background: #f8fafc;
 }
 
 @media (max-width: 900px) {
-  .adminMenuToolbarGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 760px) {
-  .adminMenuCompactGrid,
-  .adminMenuItemEditorGrid {
+  .adminMenuStatsGrid,
+  .adminMenuLayout {
     grid-template-columns: 1fr;
   }
 
-  .adminMenuFieldSpan2 {
-    grid-column: span 1;
+  .adminMenuTopbar {
+    flex-direction: column;
+  }
+
+  .adminMenuTopActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .adminMenuTopActions .adminMenuBtn {
+    flex: 1;
   }
 }
 
 @media (max-width: 640px) {
   .adminMenuPage {
-    padding: 14px;
+    padding: 12px;
   }
 
-  .adminMenuTopbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .adminMenuInlineRow {
-    grid-template-columns: 1fr;
-  }
-
-  .adminMenuPanel {
+  .adminMenuTopbar,
+  .adminMenuCategoryPanel,
+  .adminMenuItemsPanel {
     padding: 16px;
-    border-radius: 16px;
+    border-radius: 18px;
   }
 
   .adminMenuTitle {
@@ -406,66 +737,127 @@
     font-size: 14px;
   }
 
-  .adminMenuBtnGhost {
-    width: 100%;
+  .adminMenuStatsGrid {
+    gap: 10px;
   }
 
-  .adminMenuActionRow {
+  .adminMenuStatCard {
+    padding: 14px;
+  }
+
+  .adminMenuSectionHead,
+  .adminMenuItemRight,
+  .adminMenuItemActions,
+  .adminMenuModalFooter {
+    align-items: stretch;
     flex-direction: column;
   }
 
-  .adminMenuActionRow .adminMenuBtn {
+  .adminMenuSectionHead .adminMenuBtn,
+  .adminMenuItemActions .adminMenuBtn,
+  .adminMenuModalFooter .adminMenuBtn,
+  .adminMenuTopActions .adminMenuBtn {
     width: 100%;
   }
 
-  .adminMenuItemHeadCompact,
-  .adminMenuItemHeadRight {
-    flex-direction: column;
-    align-items: flex-start;
+  .adminMenuItemCard {
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: start;
   }
 
-  .adminMenuMobileTabs {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .adminMenuMobileTab {
-    min-height: 42px;
+  .adminMenuItemMedia {
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
-    border: 1px solid #374151;
-    background: #1f2937;
-    color: #e5e7eb;
-    font-weight: 800;
-    font-size: 13px;
-    cursor: pointer;
   }
 
-  .adminMenuMobileTab.is-active {
-    background: #e5e7eb;
-    color: #111827;
-    border-color: #d1d5db;
+  .adminMenuItemRight {
+    grid-column: 1 / -1;
+    width: 100%;
+    gap: 10px;
   }
 
-  .adminMenuLeftColumn,
-  .adminMenuRightColumn {
-    display: block;
+  .adminMenuPrice {
+    width: 100%;
+    box-sizing: border-box;
   }
 
-  .is-mobile-section-hidden {
-    display: none;
+  .adminMenuFormGrid,
+  .adminMenuCompactGrid {
+    grid-template-columns: 1fr;
   }
 
-  .is-mobile-section-visible {
-    display: block;
+  .adminMenuModalOverlay {
+    padding: 10px;
+    align-items: flex-end;
   }
 
-  .adminMenuRightColumn {
-    display: none;
+  .adminMenuModal {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    border-radius: 20px;
   }
 
-  .adminMenuRightColumn.is-mobile-visible {
-    display: block;
+  .adminMenuModalHead,
+  .adminMenuModalBody,
+  .adminMenuModalFooter {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+
+/* Mobile modal fix: keep action buttons visible */
+.adminMenuModal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.adminMenuModalHead,
+.adminMenuModalFooter {
+  flex: 0 0 auto;
+}
+
+.adminMenuModalBody {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.adminMenuModalFooter {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .adminMenuModalOverlay {
+    padding: 8px;
+    align-items: center;
+  }
+
+  .adminMenuModal {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    border-radius: 18px;
+  }
+
+  .adminMenuModalBody {
+    max-height: none;
+    padding-bottom: 14px;
+  }
+
+  .adminMenuModalFooter {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px 16px 16px;
+    box-shadow: 0 -12px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  .adminMenuModalFooter .adminMenuBtn {
+    width: 100%;
+    min-height: 46px;
   }
 }
