@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "../css/RoomChoicePage.css";
 
@@ -7,10 +7,27 @@ export default function RoomLanguagePage() {
   const { tableId } = useParams();
   const [searchParams] = useSearchParams();
 
-  const token = searchParams.get("token") || "";
+  const urlToken = searchParams.get("token") || "";
   const initialLang = searchParams.get("lang") || "bs";
+
+  const tokenStorageKey = `room-token-${tableId}`;
+
+  if (urlToken) {
+    sessionStorage.setItem(tokenStorageKey, urlToken);
+  }
+
+  const token = urlToken || sessionStorage.getItem(tokenStorageKey) || "";
+
   const [selectedLang, setSelectedLang] = useState(initialLang);
   const [languageConfirmed, setLanguageConfirmed] = useState(false);
+
+  useEffect(() => {
+    if (urlToken) {
+      window.history.replaceState({}, "", `/t/${tableId}?lang=${initialLang}`);
+    }
+  }, [urlToken, tableId, initialLang]);
+
+  const isRtl = selectedLang === "ar";
 
   const text = {
     bs: {
@@ -52,20 +69,47 @@ export default function RoomLanguagePage() {
       servicesText: "Massagen, Quad, Wellness und weitere Zusatzleistungen.",
       back: "Zurück",
     },
+    ar: {
+      welcome: "مرحبًا",
+      room: "غرفة",
+      chooseLanguage: "اختر اللغة",
+      chooseLanguageSubtitle: "يرجى اختيار اللغة أولاً للمتابعة.",
+      continue: "متابعة",
+      chooseOption: "اختر خيارًا للمتابعة.",
+      menu: "القائمة",
+      menuText: "تصفح الطعام والمشروبات وخدمة الغرف.",
+      services: "خدمات الفندق",
+      servicesText: "المساج، الكواد، السبا والخدمات الإضافية الأخرى.",
+      back: "رجوع",
+    },
+    tr: {
+      welcome: "HOŞ GELDİNİZ",
+      room: "Oda",
+      chooseLanguage: "Dil seçin",
+      chooseLanguageSubtitle: "Devam etmek için önce dilinizi seçin.",
+      continue: "Devam et",
+      chooseOption: "Devam etmek için bir seçenek seçin.",
+      menu: "Menü",
+      menuText: "Yiyecek, içecek ve oda servisi seçeneklerini inceleyin.",
+      services: "Otel hizmetleri",
+      servicesText: "Masaj, quad, wellness ve diğer ek hizmetler.",
+      back: "Geri",
+    },
   };
 
   const t = text[selectedLang] || text.bs;
 
-  const goBack = () => {
-    navigate(-1);
+  const selectLanguage = (lang) => {
+    setSelectedLang(lang);
+    setLanguageConfirmed(true);
   };
 
   const goToMenu = () => {
-    navigate(`/t/${tableId}/menu?token=${token}&lang=${selectedLang}`);
+    navigate(`/t/${tableId}/menu?lang=${selectedLang}`);
   };
 
   const goToServices = () => {
-    navigate(`/t/${tableId}/services?token=${token}&lang=${selectedLang}`);
+    navigate(`/t/${tableId}/services?lang=${selectedLang}`);
   };
 
   if (!languageConfirmed) {
@@ -74,9 +118,7 @@ export default function RoomLanguagePage() {
         <div className="choiceBgGlow choiceBgGlow1"></div>
         <div className="choiceBgGlow choiceBgGlow2"></div>
 
-        <div className="choiceCard">
-          
-
+        <div className="choiceCard" dir={isRtl ? "rtl" : "ltr"}>
           <div className="choiceTopRow">
             <div className="choiceTopText">
               <p className="choiceEyebrow">{t.welcome}</p>
@@ -91,10 +133,7 @@ export default function RoomLanguagePage() {
             <button
               type="button"
               className="choiceOption"
-              onClick={() => {
-                setSelectedLang("bs");
-                setLanguageConfirmed(true);
-              }}
+              onClick={() => selectLanguage("bs")}
             >
               <span className="choiceOptionLabel">Bosanski</span>
               <span className="choiceOptionText">
@@ -105,10 +144,7 @@ export default function RoomLanguagePage() {
             <button
               type="button"
               className="choiceOption"
-              onClick={() => {
-                setSelectedLang("en");
-                setLanguageConfirmed(true);
-              }}
+              onClick={() => selectLanguage("en")}
             >
               <span className="choiceOptionLabel">English</span>
               <span className="choiceOptionText">Continue in English.</span>
@@ -117,13 +153,28 @@ export default function RoomLanguagePage() {
             <button
               type="button"
               className="choiceOption"
-              onClick={() => {
-                setSelectedLang("de");
-                setLanguageConfirmed(true);
-              }}
+              onClick={() => selectLanguage("de")}
             >
               <span className="choiceOptionLabel">Deutsch</span>
               <span className="choiceOptionText">Weiter auf Deutsch.</span>
+            </button>
+
+            <button
+              type="button"
+              className="choiceOption"
+              onClick={() => selectLanguage("tr")}
+            >
+              <span className="choiceOptionLabel">Türkçe</span>
+              <span className="choiceOptionText">Türkçe devam edin.</span>
+            </button>
+
+            <button
+              type="button"
+              className="choiceOption"
+              onClick={() => selectLanguage("ar")}
+            >
+              <span className="choiceOptionLabel">العربية</span>
+              <span className="choiceOptionText">تابع باللغة العربية.</span>
             </button>
           </div>
         </div>
@@ -136,7 +187,7 @@ export default function RoomLanguagePage() {
       <div className="choiceBgGlow choiceBgGlow1"></div>
       <div className="choiceBgGlow choiceBgGlow2"></div>
 
-      <div className="choiceCard">
+      <div className="choiceCard" dir={isRtl ? "rtl" : "ltr"}>
         <button
           className="guestBackBtn"
           type="button"
@@ -163,6 +214,8 @@ export default function RoomLanguagePage() {
               <option value="bs">Bosnian</option>
               <option value="en">English</option>
               <option value="de">Deutsch</option>
+              <option value="tr">Türkçe</option>
+              <option value="ar">العربية</option>
             </select>
           </div> */}
         </div>

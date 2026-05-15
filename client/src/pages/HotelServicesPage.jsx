@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "../css/HotelServicesPage.css";
 
@@ -8,8 +8,28 @@ export default function HotelServicesPage() {
   const [searchParams] = useSearchParams();
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
-  const token = searchParams.get("token") || "";
+  const urlToken = searchParams.get("token") || "";
   const lang = searchParams.get("lang") || "bs";
+
+  const tokenStorageKey = `room-token-${tableId}`;
+
+  if (urlToken) {
+    sessionStorage.setItem(tokenStorageKey, urlToken);
+  }
+
+  const token = urlToken || sessionStorage.getItem(tokenStorageKey) || "";
+
+  useEffect(() => {
+    if (urlToken) {
+      window.history.replaceState(
+        {},
+        "",
+        `/t/${tableId}/services?lang=${lang}`
+      );
+    }
+  }, [urlToken, tableId, lang]);
+
+  const isRtl = lang === "ar";
 
   const text = {
     bs: {
@@ -58,6 +78,36 @@ export default function HotelServicesPage() {
         "Bitte wenden Sie sich für weitere Informationen an die Rezeption.",
       close: "Schließen",
     },
+    ar: {
+      eyebrow: "خدمات الفندق",
+      room: "غرفة",
+      subtitle: "تصفح خدمات الفندق المتاحة.",
+      backToMenu: "رجوع",
+      title: "خدمات الفندق",
+      total: "المجموع",
+      items: "عناصر",
+      bottomNote: "اختر خدمة للحصول على مزيد من المعلومات.",
+      massage: "مساج",
+      quad: "كواد",
+      receptionTitle: "مزيد من المعلومات",
+      receptionInfo: "يرجى التواصل مع الاستقبال للحصول على مزيد من المعلومات.",
+      close: "إغلاق",
+    },
+    tr: {
+      eyebrow: "OTEL HİZMETLERİ",
+      room: "Oda",
+      subtitle: "Mevcut otel hizmetlerini inceleyin.",
+      backToMenu: "Geri",
+      title: "Otel hizmetleri",
+      total: "toplam",
+      items: "ürün",
+      bottomNote: "Daha fazla bilgi için bir hizmet seçin.",
+      massage: "Masaj",
+      quad: "Quad",
+      receptionTitle: "Daha fazla bilgi",
+      receptionInfo: "Daha fazla bilgi için lütfen resepsiyonla iletişime geçin.",
+      close: "Kapat",
+    },
   };
 
   const t = text[lang] || text.bs;
@@ -72,12 +122,12 @@ export default function HotelServicesPage() {
   };
 
   return (
-    <div className="hotelServicesPage">
+    <div className="hotelServicesPage" dir={isRtl ? "rtl" : "ltr"}>
       <div className="hotelServicesContainer">
         <button
           className="guestBackBtn"
           type="button"
-          onClick={() => navigate(`/t/${tableId}?token=${token}&lang=${lang}`)}
+          onClick={() => navigate(`/t/${tableId}?lang=${lang}`)}
         >
           ← {t.backToMenu}
         </button>
