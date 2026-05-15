@@ -519,9 +519,8 @@ export default function AdminMenuPage() {
                           <div key={cat.id} className="adminMenuDropdownItem">
                             <button
                               type="button"
-                              className={`adminMenuDropdownSelect ${
-                                selectedCatId === cat.id ? "is-active" : ""
-                              }`}
+                              className={`adminMenuDropdownSelect ${selectedCatId === cat.id ? "is-active" : ""
+                                }`}
                               onClick={() => {
                                 setSelectedCatId(cat.id);
                                 setCategoriesOpen(false);
@@ -736,7 +735,7 @@ export default function AdminMenuPage() {
                   </div>
 
                   <div className="adminMenuField">
-                    <label className="adminMenuLabel">French</label>
+                    <label className="adminMenuLabel">Turkish</label>
                     <input
                       className="adminMenuInput"
                       value={categoryForm.name4}
@@ -746,7 +745,7 @@ export default function AdminMenuPage() {
                           name4: e.target.value,
                         }))
                       }
-                      placeholder="Boissons"
+                      placeholder="İçecekler"
                     />
                   </div>
                 </div>
@@ -934,7 +933,7 @@ export default function AdminMenuPage() {
                       </div>
 
                       <div className="adminMenuField">
-                        <label className="adminMenuLabel">French</label>
+                        <label className="adminMenuLabel">Turkish</label>
                         <input
                           className="adminMenuInput"
                           value={itemForm.name4}
@@ -944,7 +943,7 @@ export default function AdminMenuPage() {
                               name4: e.target.value,
                             }))
                           }
-                          placeholder="Nom français"
+                          placeholder="Türkçe isim"
                         />
                       </div>
                     </div>

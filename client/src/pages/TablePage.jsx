@@ -23,15 +23,31 @@ export default function TablePage() {
   // Token + language from RoomLanguagePage
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategory = searchParams.get("category");
-  const token = searchParams.get("token") || "";
+
+  const urlToken = searchParams.get("token") || "";
   const langCode = searchParams.get("lang") || "bs";
+
+  //URL HIDDING
+  const tokenStorageKey = `room-token-${tableId}`;
+
+  if (urlToken) {
+    sessionStorage.setItem(tokenStorageKey, urlToken);
+  }
+
+  const token = urlToken || sessionStorage.getItem(tokenStorageKey) || "";
+
+  useEffect(() => {
+  if (urlToken) {
+    window.history.replaceState({}, "", `/t/${tableId}?lang=${langCode}`);
+  }
+}, [urlToken, tableId, langCode]);
 
   const langMap = {
     bs: 0,
     en: 1,
     de: 2,
     ar: 3,
-    fr: 4,
+    tr: 4,
   };
 
   // jezik: 0 = osnovni name, 1 = name1, 2 = name2, 3 = name3, 4 = name4
@@ -201,46 +217,46 @@ export default function TablePage() {
       ok: "حسنًا",
       footerHint: "بعد إضافة عنصر، ستظهر معاينة السلة في الأسفل.",
     },
-    fr: {
-      roomService: "Service en chambre",
-      room: "Chambre",
-      subtitleCategory: "Choisissez des articles pour votre commande",
-      subtitleHome: "Consultez le menu et contactez le personnel si nécessaire",
-      callStaff: "Appeler le personnel",
-      error: "Erreur",
-      back: "Retour",
-      category: "Catégorie",
-      menu: "Menu",
-      total: "total",
-      items: "articles",
-      add: "Ajouter",
-      added: "Ajouté",
-      emptyCart: "Votre panier est vide.",
-      orderSuccess: "Votre commande a été envoyée avec succès.",
+    tr: {
+      roomService: "Oda servisi",
+      room: "Oda",
+      subtitleCategory: "Siparişiniz için ürünleri seçin",
+      subtitleHome: "Menüyü inceleyin ve gerekirse personelle iletişime geçin",
+      callStaff: "Personeli çağır",
+      error: "Hata",
+      back: "Geri",
+      category: "Kategori",
+      menu: "Menü",
+      total: "toplam",
+      items: "ürün",
+      add: "Ekle",
+      added: "Eklendi",
+      emptyCart: "Sepetiniz boş.",
+      orderSuccess: "Siparişiniz başarıyla gönderildi.",
       staffCalled:
-        "Le personnel de l'hôtel a été informé et viendra bientôt à votre chambre.",
-      billRequested: "L'addition a été demandée.",
-      yourOrder: "Votre commande",
-      cart: "Panier",
-      closeCart: "Fermer le panier",
-      close: "Fermer",
-      noItems: "Aucun article pour le moment",
-      addSomething: "Ajoutez quelque chose depuis le menu.",
-      decreaseQty: "Diminuer la quantité",
-      increaseQty: "Augmenter la quantité",
-      note: "Note (optionnel)",
-      notePlaceholder: "ex. lait d’avoine, sans sucre…",
-      totalLabel: "Total",
-      sending: "Envoi…",
-      finishOrder: "Valider la commande",
-      finePrint: "Votre commande est envoyée directement au personnel de l'hôtel.",
-      viewCart: "Voir le panier",
-      openCart: "Ouvrir le panier",
-      orderSent: "Commande envoyée",
-      staffNotified: "Le personnel a été informé",
-      ok: "OK",
+        "Otel personeline haber verildi ve kısa süre içinde odanıza gelecektir.",
+      billRequested: "Hesap istendi.",
+      yourOrder: "Siparişiniz",
+      cart: "Sepet",
+      closeCart: "Sepeti kapat",
+      close: "Kapat",
+      noItems: "Henüz ürün yok",
+      addSomething: "Menüden bir ürün ekleyin.",
+      decreaseQty: "Miktarı azalt",
+      increaseQty: "Miktarı artır",
+      note: "Not (isteğe bağlı)",
+      notePlaceholder: "örn. şekersiz, ekstra buz…",
+      totalLabel: "Toplam",
+      sending: "Gönderiliyor…",
+      finishOrder: "Siparişi gönder",
+      finePrint: "Siparişiniz doğrudan otel personeline gönderilir.",
+      viewCart: "Sepeti görüntüle",
+      openCart: "Sepeti aç",
+      orderSent: "Sipariş gönderildi",
+      staffNotified: "Personele haber verildi",
+      ok: "Tamam",
       footerHint:
-        "Après avoir ajouté un article, l’aperçu du panier apparaîtra en bas.",
+        "Bir ürün ekledikten sonra sepet önizlemesi altta görünecektir.",
     },
   };
 
