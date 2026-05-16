@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAdminLoggedIn, getAdminAuth } from "../adminAuth";
 import "../css/AdminOrdersOverviewPage.css";
@@ -85,6 +85,9 @@ export default function AdminOrdersOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedOrderId, setExpandedOrderId] = useState("");
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const [range, setRange] = useState("today");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -206,6 +209,39 @@ export default function AdminOrdersOverviewPage() {
     };
   }, [filteredOrders]);
 
+  const filteredOrderIds = useMemo(
+    () => filteredOrders.map((order) => order.id),
+    [filteredOrders]
+  );
+
+  const allFilteredSelected =
+    filteredOrderIds.length > 0 &&
+    filteredOrderIds.every((id) => selectedOrderIds.includes(id));
+
+  useEffect(() => {
+    setSelectedOrderIds((current) =>
+      current.filter((id) => filteredOrderIds.includes(id))
+    );
+  }, [filteredOrderIds]);
+
+  function handleToggleOrder(orderId) {
+    setSelectedOrderIds((current) =>
+      current.includes(orderId)
+        ? current.filter((id) => id !== orderId)
+        : [...current, orderId]
+    );
+  }
+
+  function handleToggleAllFiltered() {
+    setSelectedOrderIds((current) => {
+      if (allFilteredSelected) {
+        return current.filter((id) => !filteredOrderIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...filteredOrderIds]));
+    });
+  }
+
   function handleExportCsv() {
     const rows = [
       [
@@ -233,6 +269,53 @@ export default function AdminOrdersOverviewPage() {
     ];
 
     downloadCsv("historija-narudzbi.csv", rows);
+  }
+
+  async function handleDeleteSelected() {
+    if (selectedOrderIds.length === 0 || deleting) return;
+
+    const confirmed = window.confirm(
+      `Izbrisati ${selectedOrderIds.length} odabranih narudzbi? Ova akcija se ne moze ponistiti.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      setDeleteError("");
+
+      const idsToDelete = [...selectedOrderIds];
+
+      await Promise.all(
+        idsToDelete.map(async (orderId) => {
+          const res = await fetch(
+            `${API_BASE}/orders/${encodeURIComponent(orderId)}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: getAdminAuth(),
+              },
+            }
+          );
+
+          if (!res.ok) {
+            throw new Error("Brisanje narudzbi nije uspjelo.");
+          }
+        })
+      );
+
+      setOrders((current) =>
+        current.filter((order) => !idsToDelete.includes(order.id))
+      );
+      setSelectedOrderIds([]);
+      setExpandedOrderId((current) =>
+        idsToDelete.includes(current) ? "" : current
+      );
+    } catch (err) {
+      setDeleteError(err.message || "Doslo je do greske pri brisanju.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -368,10 +451,42 @@ export default function AdminOrdersOverviewPage() {
         )}
 
         {!loading && !error && filteredOrders.length > 0 && (
-          <div className="ordersOverviewTableWrap">
-            <table className="ordersOverviewTable">
+          <div className="ordersOverviewResults">
+            <div className="ordersOverviewSelectionBar">
+              <label className="ordersOverviewSelectAll">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={handleToggleAllFiltered}
+                  disabled={deleting}
+                />
+                <span>Odaberi sve prikazane</span>
+              </label>
+
+              <div className="ordersOverviewSelectionActions">
+                <span className="ordersOverviewSelectedCount">
+                  Odabrano: {selectedOrderIds.length}
+                </span>
+                <button
+                  type="button"
+                  className="ordersOverviewBtn ordersOverviewBtnDanger"
+                  onClick={handleDeleteSelected}
+                  disabled={selectedOrderIds.length === 0 || deleting}
+                >
+                  {deleting ? "Brisanje..." : "Izbrisi odabrane"}
+                </button>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="ordersOverviewDeleteError">{deleteError}</div>
+            )}
+
+            <div className="ordersOverviewTableWrap">
+              <table className="ordersOverviewTable">
               <thead>
                 <tr>
+                  <th className="ordersOverviewSelectCol">Odaberi</th>
                   <th>Soba / Sto</th>
                   <th>Status</th>
                   <th>Kreirana</th>
@@ -386,10 +501,20 @@ export default function AdminOrdersOverviewPage() {
               <tbody>
                 {filteredOrders.map((order) => {
                   const expanded = expandedOrderId === order.id;
+                  const selected = selectedOrderIds.includes(order.id);
 
                   return (
-                    <>
-                      <tr key={order.id}>
+                    <Fragment key={order.id}>
+                      <tr>
+                        <td className="ordersOverviewSelectCol">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => handleToggleOrder(order.id)}
+                            disabled={deleting}
+                            aria-label={`Odaberi narudzbu ${order.id}`}
+                          />
+                        </td>
                         <td className="ordersOverviewCellStrong">{order.tableId}</td>
                         <td>
                           <span
@@ -421,8 +546,8 @@ export default function AdminOrdersOverviewPage() {
                       </tr>
 
                       {expanded && (
-                        <tr className="ordersOverviewDetailsRow" key={`${order.id}-details`}>
-                          <td colSpan="8">
+                        <tr className="ordersOverviewDetailsRow">
+                          <td colSpan="9">
                             <div className="ordersOverviewDetailsBox">
                               <div className="ordersOverviewDetailsTitle">
                                 Detalji narudžbe
@@ -451,11 +576,12 @@ export default function AdminOrdersOverviewPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         )}
       </div>
