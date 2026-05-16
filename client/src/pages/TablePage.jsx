@@ -62,6 +62,7 @@ export default function TablePage() {
       callStaff: "Pozovi osoblje",
       error: "Greška",
       back: "Nazad",
+      allCategories: "Sve kategorije",
       category: "Kategorija",
       menu: "Meni",
       total: "ukupno",
@@ -103,6 +104,7 @@ export default function TablePage() {
       callStaff: "Call staff",
       error: "Error",
       back: "Back",
+      allCategories: "All categories",
       category: "Category",
       menu: "Menu",
       total: "total",
@@ -145,6 +147,7 @@ export default function TablePage() {
       callStaff: "Personal rufen",
       error: "Fehler",
       back: "Zurück",
+      allCategories: "Alle Kategorien",
       category: "Kategorie",
       menu: "Menü",
       total: "insgesamt",
@@ -186,6 +189,7 @@ export default function TablePage() {
       callStaff: "استدعاء الموظفين",
       error: "خطأ",
       back: "رجوع",
+      allCategories: "كل الفئات",
       category: "الفئة",
       menu: "القائمة",
       total: "الإجمالي",
@@ -225,6 +229,7 @@ export default function TablePage() {
       callStaff: "Personeli çağır",
       error: "Hata",
       back: "Geri",
+      allCategories: "Tüm kategoriler",
       category: "Kategori",
       menu: "Menü",
       total: "toplam",
@@ -549,7 +554,7 @@ export default function TablePage() {
         <div className="tp-card">
           {selectedCategory && (
             <button className="tp-backButton" onClick={goBackToMenu}>
-              ← {t.back}
+              ← {t.allCategories}
             </button>
           )}
 
