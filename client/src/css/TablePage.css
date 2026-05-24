@@ -384,6 +384,36 @@
   flex: 1;
 }
 
+.tp-itemMedia {
+  width: 82px;
+  height: 82px;
+  flex: 0 0 82px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(212, 175, 55, 0.14), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.025);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.tp-itemMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tp-itemMedia span {
+  color: var(--tp-primary);
+  font-family: var(--tp-font-title);
+  font-size: 28px;
+  font-weight: 800;
+}
+
 .tp-itemName {
   font-family: var(--tp-font-title);
   font-size: 22px;
@@ -813,12 +843,24 @@
 
 @media (max-width: 520px) {
   .tp-menuItem {
-    align-items: flex-start;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    align-items: start;
     gap: 12px;
   }
 
+  .tp-itemMedia {
+    width: 78px;
+    height: 78px;
+    flex-basis: 78px;
+  }
+
+  .tp-itemLeft {
+    width: 100%;
+  }
+
   .tp-itemRight {
+    grid-column: 1 / -1;
     width: 100%;
     justify-content: space-between;
   }
@@ -874,6 +916,17 @@
 
   .tp-stickyCartPrice {
     font-size: 14px;
+  }
+
+  .tp-menuItem {
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+
+  .tp-itemMedia {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+    border-radius: 14px;
   }
 }
 

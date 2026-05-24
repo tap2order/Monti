@@ -611,6 +611,16 @@ export default function TablePage() {
             <div className="tp-menuList">
               {itemsForSelected.map((it) => (
                 <div key={it.id} className="tp-menuItem">
+                  <div className="tp-itemMedia">
+                    {it.imageUrl ? (
+                      <img src={it.imageUrl} alt={getItemName(it)} />
+                    ) : (
+                      <span>
+                        {String(getItemName(it) || "?").charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
                   <div className="tp-itemLeft">
                     <div className="tp-itemName">{getItemName(it)}</div>
                     <div className="tp-itemMeta">
