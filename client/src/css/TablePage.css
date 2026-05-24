@@ -385,14 +385,15 @@
 }
 
 .tp-itemMedia {
-  width: 82px;
-  height: 82px;
-  flex: 0 0 82px;
+  width: 96px;
+  height: 96px;
+  flex: 0 0 96px;
+  padding: 18px 8px;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background:
-    linear-gradient(180deg, rgba(212, 175, 55, 0.14), rgba(255, 255, 255, 0.03)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
     rgba(255, 255, 255, 0.025);
   display: flex;
   align-items: center;
@@ -402,9 +403,10 @@
 
 .tp-itemMedia img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: 56px;
+  object-fit: contain;
   display: block;
+  background: #fff;
 }
 
 .tp-itemMedia span {
@@ -844,15 +846,15 @@
 @media (max-width: 520px) {
   .tp-menuItem {
     display: grid;
-    grid-template-columns: 78px minmax(0, 1fr);
+    grid-template-columns: 96px minmax(0, 1fr);
     align-items: start;
     gap: 12px;
   }
 
   .tp-itemMedia {
-    width: 78px;
-    height: 78px;
-    flex-basis: 78px;
+    width: 96px;
+    height: 96px;
+    flex-basis: 96px;
   }
 
   .tp-itemLeft {
@@ -919,14 +921,19 @@
   }
 
   .tp-menuItem {
-    grid-template-columns: 68px minmax(0, 1fr);
+    grid-template-columns: 88px minmax(0, 1fr);
   }
 
   .tp-itemMedia {
-    width: 68px;
-    height: 68px;
-    flex-basis: 68px;
+    width: 88px;
+    height: 88px;
+    flex-basis: 88px;
+    padding: 16px 7px;
     border-radius: 14px;
+  }
+
+  .tp-itemMedia img {
+    height: 52px;
   }
 }
 
