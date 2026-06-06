@@ -22,8 +22,11 @@ const emptyItemForm = {
 };
 
 const MAX_IMAGE_SOURCE_BYTES = 8 * 1024 * 1024;
-const MAX_IMAGE_DIMENSION = 1200;
-const IMAGE_QUALITY = 0.82;
+const MAX_IMAGE_DIMENSION = 1000;
+const MIN_IMAGE_DIMENSION = 480;
+const MAX_IMAGE_DATA_URL_BYTES = 700 * 1024;
+const INITIAL_IMAGE_QUALITY = 0.74;
+const MIN_IMAGE_QUALITY = 0.48;
 
 export default function AdminMenuPage() {
   const api = import.meta.env.VITE_API_URL;
@@ -145,6 +148,26 @@ export default function AdminMenuPage() {
     });
   }
 
+  function canvasToJpegDataUrl(canvas, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Upload slike nije uspio."));
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        },
+        "image/jpeg",
+        quality
+      );
+    });
+  }
+
   async function imageFileToOptimizedBase64(file) {
     if (!file.type.startsWith("image/")) {
       throw new Error("Odaberite validnu sliku.");
@@ -158,25 +181,50 @@ export default function AdminMenuPage() {
 
     return new Promise((resolve, reject) => {
       const image = new Image();
-      image.onload = () => {
-        const scale = Math.min(
-          1,
-          MAX_IMAGE_DIMENSION / Math.max(image.width, image.height)
-        );
-        const width = Math.max(1, Math.round(image.width * scale));
-        const height = Math.max(1, Math.round(image.height * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+      image.onload = async () => {
+        try {
+          let maxDimension = Math.min(
+            MAX_IMAGE_DIMENSION,
+            Math.max(image.width, image.height)
+          );
+          let quality = INITIAL_IMAGE_QUALITY;
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Upload slike nije uspio."));
-          return;
+          while (maxDimension >= MIN_IMAGE_DIMENSION) {
+            const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+            const width = Math.max(1, Math.round(image.width * scale));
+            const height = Math.max(1, Math.round(image.height * scale));
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              reject(new Error("Upload slike nije uspio."));
+              return;
+            }
+
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(image, 0, 0, width, height);
+
+            const dataUrl = await canvasToJpegDataUrl(canvas, quality);
+            if (dataUrl.length <= MAX_IMAGE_DATA_URL_BYTES) {
+              resolve(dataUrl);
+              return;
+            }
+
+            if (quality > MIN_IMAGE_QUALITY) {
+              quality = Math.max(MIN_IMAGE_QUALITY, quality - 0.1);
+            } else {
+              maxDimension = Math.floor(maxDimension * 0.82);
+              quality = INITIAL_IMAGE_QUALITY;
+            }
+          }
+
+          reject(new Error("Slika je prevelika. Odaberite manju sliku."));
+        } catch (error) {
+          reject(error);
         }
-
-        ctx.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", IMAGE_QUALITY));
       };
       image.onerror = () => reject(new Error("Upload slike nije uspio."));
       image.src = source;
