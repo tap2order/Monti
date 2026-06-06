@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 
 // Your deployed base URL (from your example)
 const BASE_URL =
-  process.env.CLIENT_BASE_URL || "https://cafe-order-1-55n1.onrender.com";
+  process.env.CLIENT_BASE_URL || "https://monti.tap2order.ba";
 
 function safeFileName(s) {
   return String(s).replace(/[^a-zA-Z0-9_-]/g, "_");
