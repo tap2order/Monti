@@ -21,6 +21,10 @@ const emptyItemForm = {
   price: "",
 };
 
+const MAX_IMAGE_SOURCE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1200;
+const IMAGE_QUALITY = 0.82;
+
 export default function AdminMenuPage() {
   const api = import.meta.env.VITE_API_URL;
   const nav = useNavigate();
@@ -83,6 +87,20 @@ export default function AdminMenuPage() {
     return r;
   }
 
+  async function readResponseJson(r) {
+    const text = await r.text();
+    if (!text) return null;
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      if (r.status === 413) {
+        return { error: "Slika je prevelika. Odaberite manju sliku." };
+      }
+      return { error: text.slice(0, 160) || `HTTP ${r.status}` };
+    }
+  }
+
   const selectedCat = useMemo(
     () => menu.find((c) => c.id === selectedCatId) || null,
     [menu, selectedCatId]
@@ -127,6 +145,44 @@ export default function AdminMenuPage() {
     });
   }
 
+  async function imageFileToOptimizedBase64(file) {
+    if (!file.type.startsWith("image/")) {
+      throw new Error("Odaberite validnu sliku.");
+    }
+
+    if (file.size > MAX_IMAGE_SOURCE_BYTES) {
+      throw new Error("Slika je prevelika. Maksimalna veliÄina je 8 MB.");
+    }
+
+    const source = await fileToBase64(file);
+
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        const scale = Math.min(
+          1,
+          MAX_IMAGE_DIMENSION / Math.max(image.width, image.height)
+        );
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Upload slike nije uspio."));
+          return;
+        }
+
+        ctx.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", IMAGE_QUALITY));
+      };
+      image.onerror = () => reject(new Error("Upload slike nije uspio."));
+      image.src = source;
+    });
+  }
+
   async function loadMenu() {
     setLoading(true);
     setErr("");
@@ -134,7 +190,7 @@ export default function AdminMenuPage() {
     try {
       const r = await fetch(`${api}/menu`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
+      const data = await readResponseJson(r);
 
       setMenu(data);
       setSelectedCatId((prev) => {
@@ -236,7 +292,7 @@ export default function AdminMenuPage() {
         }),
       });
 
-      const data = await r.json();
+      const data = await readResponseJson(r);
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       setSuccess("Kategorija je uspješno dodana.");
@@ -272,7 +328,7 @@ export default function AdminMenuPage() {
         }),
       });
 
-      const data = await r.json();
+      const data = await readResponseJson(r);
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       setSuccess("Kategorija je uspješno izmijenjena.");
@@ -298,7 +354,7 @@ export default function AdminMenuPage() {
         method: "DELETE",
       });
 
-      const data = await r.json();
+      const data = await readResponseJson(r);
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       if (id === selectedCatId) setSelectedCatId("");
@@ -340,7 +396,7 @@ export default function AdminMenuPage() {
         }),
       });
 
-      const data = await r.json();
+      const data = await readResponseJson(r);
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       setSuccess("Artikal je uspješno dodan.");
@@ -381,7 +437,7 @@ export default function AdminMenuPage() {
         }),
       });
 
-      const data = await r.json();
+      const data = await readResponseJson(r);
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       setSuccess(`Artikal "${name}" je sačuvan.`);
@@ -405,7 +461,7 @@ export default function AdminMenuPage() {
         method: "DELETE",
       });
 
-      const data = await r.json();
+      const data = await readResponseJson(r);
       if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
 
       setSuccess("Artikal je obrisan.");
@@ -854,13 +910,13 @@ export default function AdminMenuPage() {
                         if (!file) return;
 
                         try {
-                          const base64 = await fileToBase64(file);
+                          const base64 = await imageFileToOptimizedBase64(file);
                           setItemForm((prev) => ({
                             ...prev,
                             imageUrl: base64,
                           }));
-                        } catch {
-                          setErr("Upload slike nije uspio.");
+                        } catch (error) {
+                          setErr(String(error.message || error));
                         }
                       }}
                     />
