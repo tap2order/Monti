@@ -8,6 +8,8 @@ process.env.STAFF_PIN = "123456";
 process.env.AUTH_SECRET = "test-secret-that-is-long-enough-for-signing";
 process.env.PUBLIC_CLIENT_URL = "http://localhost:5173";
 process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
+process.env.ROOM_SERVICE_OPENS_AT = "00:00";
+process.env.ROOM_SERVICE_CLOSES_AT = "00:00";
 
 let calls;
 const fakePrisma = {
@@ -26,16 +28,17 @@ Module._load = originalLoad;
 let testServer; let baseUrl;
 async function request(path, options = {}) { const headers = { ...(options.headers || {}) }; if (options.body) headers["Content-Type"] ||= "application/json"; return fetch(`${baseUrl}${path}`, { ...options, headers, body: options.body && typeof options.body !== "string" ? JSON.stringify(options.body) : options.body }); }
 async function staffToken() { const response = await request("/auth/staff/login", { method: "POST", body: { pin: "123456" } }); return (await response.json()).token; }
+async function roomCookie() { const response = await request("/api/public/rooms/1/bootstrap", { method: "POST", body: { token: "table-token" } }); return response.headers.get("set-cookie").split(";")[0]; }
 test.before(async () => { calls = []; await new Promise((resolve) => { testServer = app.listen(0, "127.0.0.1", () => { baseUrl = `http://127.0.0.1:${testServer.address().port}`; resolve(); }); }); });
 test.after(async () => { await new Promise((resolve, reject) => testServer.close((error) => error ? reject(error) : resolve())); });
 test.beforeEach(() => { calls = []; });
 
 test("guest requires a valid room credential and allowed call type", async () => {
-  assert.equal((await request("/calls", { method: "POST", body: { tableId: "1", token: "wrong", type: "waiter" } })).status, 403);
-  assert.equal((await request("/calls", { method: "POST", body: { tableId: "1", token: "table-token", type: "anything" } })).status, 400);
+  assert.equal((await request("/calls", { method: "POST", body: { type: "waiter" } })).status, 401);
+  assert.equal((await request("/calls", { method: "POST", headers: { Cookie: await roomCookie() }, body: { type: "anything" } })).status, 400);
 });
 test("staff token is required to list and handle calls", async () => {
-  const created = await request("/calls", { method: "POST", body: { tableId: "1", token: "table-token", type: "bill" } });
+  const created = await request("/calls", { method: "POST", headers: { Cookie: await roomCookie() }, body: { type: "bill" } });
   assert.equal(created.status, 201);
   assert.equal((await request("/calls/open", { headers: { "X-Waiter-Id": "1" } })).status, 401);
   const token = await staffToken();

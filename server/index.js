@@ -15,6 +15,12 @@ const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASS = process.env.ADMIN_PASS;
 const STAFF_PIN = process.env.STAFF_PIN;
 const AUTH_SECRET = process.env.AUTH_SECRET;
+const ROOM_SESSION_TTL_SECONDS = Number(process.env.ROOM_SESSION_TTL_SECONDS || 12 * 60 * 60);
+const HOTEL_TIMEZONE = process.env.HOTEL_TIMEZONE || "Europe/Sarajevo";
+const ROOM_SERVICE_OPENS_AT = process.env.ROOM_SERVICE_OPENS_AT || "07:00";
+const ROOM_SERVICE_CLOSES_AT = process.env.ROOM_SERVICE_CLOSES_AT || "23:00";
+const ROOM_SERVICE_TEMPORARILY_CLOSED = process.env.ROOM_SERVICE_TEMPORARILY_CLOSED === "true";
+const ROOM_SERVICE_MESSAGE = process.env.ROOM_SERVICE_MESSAGE || "";
 
 if (!ADMIN_USER || !ADMIN_PASS || !STAFF_PIN || !AUTH_SECRET) {
   console.error("Missing ADMIN_USER, ADMIN_PASS, STAFF_PIN or AUTH_SECRET environment variables.");
@@ -58,6 +64,78 @@ function getTokenRole(token) {
   } catch {
     return null;
   }
+}
+
+function signRoomSession(table) {
+  const payload = Buffer.from(JSON.stringify({
+    roomId: table.id,
+    tokenHash: crypto.createHash("sha256").update(table.token).digest("base64url"),
+    exp: Math.floor(Date.now() / 1000) + ROOM_SESSION_TTL_SECONDS,
+  })).toString("base64url");
+  const signature = crypto.createHmac("sha256", AUTH_SECRET).update(`room.${payload}`).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function readRoomSession(token) {
+  if (!token || typeof token !== "string") return null;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac("sha256", AUTH_SECRET).update(`room.${payload}`).digest("base64url");
+  if (!safeEqual(signature, expected)) return null;
+  try {
+    const value = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return value?.roomId && value?.tokenHash && value.exp > Math.floor(Date.now() / 1000) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function cookieValue(req, name) {
+  const cookies = String(req.headers.cookie || "").split(";");
+  const match = cookies.map((entry) => entry.trim().split("=")).find(([key]) => key === name);
+  return match ? decodeURIComponent(match.slice(1).join("=")) : "";
+}
+
+async function requireRoomSession(req, res, next) {
+  try {
+    const session = readRoomSession(cookieValue(req, "room_session"));
+    if (!session) return res.status(401).json({ code: "ROOM_SESSION_REQUIRED", message: "Ponovo skenirajte QR kod sobe." });
+    const table = await prisma.table.findUnique({ where: { id: String(session.roomId) } });
+    const currentHash = table && crypto.createHash("sha256").update(table.token).digest("base64url");
+    if (!table || !table.isActive || !safeEqual(session.tokenHash, currentHash || "")) {
+      return res.status(401).json({ code: "ROOM_SESSION_REVOKED", message: "Sesija sobe više nije važeća." });
+    }
+    req.table = table;
+    next();
+  } catch (error) {
+    console.error("room session authentication failed", error);
+    res.status(500).json({ error: "server error" });
+  }
+}
+
+function minutes(value) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+function roomServiceAvailability(now = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: HOTEL_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(now).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  const current = Number(parts.hour) * 60 + Number(parts.minute);
+  const opens = minutes(ROOM_SERVICE_OPENS_AT);
+  const closes = minutes(ROOM_SERVICE_CLOSES_AT);
+  const scheduledOpen = opens === closes || (opens < closes ? current >= opens && current < closes : current >= opens || current < closes);
+  const isOpen = !ROOM_SERVICE_TEMPORARILY_CLOSED && scheduledOpen;
+  const reason = ROOM_SERVICE_TEMPORARILY_CLOSED ? "temporary_closed" : isOpen ? null : "outside_operating_hours";
+  return {
+    isOpen, reason, timezone: HOTEL_TIMEZONE,
+    currentLocalTime: `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`,
+    todayHours: { opensAt: ROOM_SERVICE_OPENS_AT, closesAt: ROOM_SERVICE_CLOSES_AT },
+    nextOpenAt: `od ${ROOM_SERVICE_OPENS_AT}`,
+    message: ROOM_SERVICE_MESSAGE || (isOpen ? "Room service radi." : "Room service trenutno ne radi."),
+  };
 }
 
 function bearerRole(req) {
@@ -165,6 +243,7 @@ app.use(cors({
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+  credentials: true,
 }));
 app.use(express.json({ limit: "1mb" }));
 
@@ -185,6 +264,23 @@ io.on("connection", (socket) => {
 });
 
 app.get("/health", (req, res) => res.json({ status: "ok" }));
+app.post("/api/public/rooms/:tableId/bootstrap", rateLimit({ key: "room-bootstrap", windowMs: 60_000, max: 20 }), async (req, res) => {
+  try {
+    const table = await prisma.table.findUnique({ where: { id: String(req.params.tableId) } });
+    const token = String(req.body?.token || "");
+    if (!table || !table.isActive || !token || !safeEqual(table.token, token)) {
+      return res.status(403).json({ code: "INVALID_ROOM_QR", message: "QR kod sobe nije važeći." });
+    }
+    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+    res.setHeader("Set-Cookie", `room_session=${encodeURIComponent(signRoomSession(table))}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ROOM_SESSION_TTL_SECONDS}${secure}`);
+    res.json({ room: { id: table.id, displayName: table.name || `Soba ${table.id}` } });
+  } catch (error) {
+    console.error("room bootstrap failed", error);
+    res.status(500).json({ error: "server error" });
+  }
+});
+app.get("/api/public/room-session", requireRoomSession, (req, res) => res.json({ room: { id: req.table.id, displayName: req.table.name || `Soba ${req.table.id}` } }));
+app.get("/api/public/room-service/availability", requireRoomSession, (req, res) => res.json(roomServiceAvailability()));
 app.post("/auth/admin/login", rateLimit({ key: "admin-login", windowMs: 15 * 60_000, max: 8 }), (req, res) => {
   const username = text(req.body?.username, { required: true, max: 128 });
   const password = text(req.body?.password, { required: true, max: 256 });
@@ -204,6 +300,20 @@ app.get("/menu", async (req, res) => {
     res.json(menu);
   } catch (error) {
     console.error("GET /menu failed", error);
+    res.status(500).json({ error: "Failed to load menu" });
+  }
+});
+
+app.get("/api/public/menu", async (req, res) => {
+  try {
+    const menu = await prisma.menuCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      include: { items: { where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] } },
+    });
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.json(menu);
+  } catch (error) {
+    console.error("GET /api/public/menu failed", error);
     res.status(500).json({ error: "Failed to load menu" });
   }
 });
@@ -270,11 +380,13 @@ app.delete("/menu-item/:id", requireAdmin, async (req, res) => {
   catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "Item not found" }); console.error("delete item failed", error); res.status(500).json({ error: "Failed to delete item" }); }
 });
 
-app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), requireValidTable, async (req, res) => {
+app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), requireRoomSession, async (req, res) => {
   try {
     const key = validIdempotencyKey(req.headers["idempotency-key"]);
     const items = req.body?.items;
     if (!key || !Array.isArray(items) || items.length < 1 || items.length > 30) return res.status(400).json({ error: "invalid order" });
+    const availability = roomServiceAvailability();
+    if (!availability.isOpen) return res.status(409).json({ code: "ROOM_SERVICE_CLOSED", ...availability });
     const requested = new Map();
     for (const item of items) {
       const itemId = text(item?.itemId, { required: true, max: 64 }); const qty = Number(item?.qty); const note = text(item?.note, { max: 500 });
@@ -284,10 +396,13 @@ app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), req
     }
     const existing = await prisma.order.findUnique({ where: { clientRequestId: key }, include: { items: true } });
     if (existing) return res.status(200).json(existing);
-    const menuItems = await prisma.menuItem.findMany({ where: { id: { in: [...requested.keys()] } }, select: { id: true, name: true, price: true } });
+    const menuItems = await prisma.menuItem.findMany({ where: { id: { in: [...requested.keys()] }, isActive: true, isAvailable: true }, select: { id: true, name: true, price: true, currency: true } });
     if (menuItems.length !== requested.size) return res.status(400).json({ error: "one or more menu items are unavailable" });
-    const order = await prisma.order.create({ data: { tableId: req.table.id, clientRequestId: key, status: "UNCLAIMED", items: { create: menuItems.map((item) => ({ itemId: item.id, name: item.name, price: item.price, ...requested.get(item.id) })) } }, include: { items: true } });
-    io.to("staff").emit("order:new", order);
+    const currency = menuItems[0]?.currency || "BAM";
+    if (menuItems.some((item) => (item.currency || "BAM") !== currency)) return res.status(400).json({ error: "mixed currencies are not supported" });
+    const subtotal = menuItems.reduce((sum, item) => sum + item.price * requested.get(item.id).qty, 0);
+    const order = await prisma.order.create({ data: { tableId: req.table.id, clientRequestId: key, status: "UNCLAIMED", subtotal, currency, items: { create: menuItems.map((item) => ({ itemId: item.id, name: item.name, price: item.price, ...requested.get(item.id) })) } }, include: { items: true } });
+    try { io.to("staff").emit("order:new", order); } catch (notificationError) { console.error("order notification failed", notificationError); }
     res.status(201).json(order);
   } catch (error) {
     if (error.code === "P2002") { const order = await prisma.order.findUnique({ where: { clientRequestId: String(req.headers["idempotency-key"]) }, include: { items: true } }); if (order) return res.json(order); }
@@ -320,7 +435,7 @@ app.delete("/orders/:orderId", requireAdmin, async (req, res) => {
   catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "order not found" }); console.error("delete order failed", error); res.status(500).json({ error: "server error" }); }
 });
 
-app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requireValidTable, async (req, res) => {
+app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requireRoomSession, async (req, res) => {
   try {
     const type = ["waiter", "bill"].includes(req.body?.type) ? req.body.type : null;
     if (!type) return res.status(400).json({ error: "invalid call type" });

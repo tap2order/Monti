@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import "../css/TablePage.css";
 
@@ -12,7 +12,10 @@ export default function TablePage() {
   const [loading, setLoading] = useState(true);
 
   // cart: { [itemId]: { itemId, name, price, qty, note } }
-  const [cart, setCart] = useState({});
+  const cartStorageKey = `hotel_guest_cart_${tableId}`;
+  const [cart, setCart] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(cartStorageKey) || "{}"); } catch { return {}; }
+  });
   const [placing, setPlacing] = useState(false);
   const [calling, setCalling] = useState("");
   const [placedMsg, setPlacedMsg] = useState("");
@@ -20,28 +23,17 @@ export default function TablePage() {
   const [orderPopupOpen, setOrderPopupOpen] = useState(false);
   const [staffPopupOpen, setStaffPopupOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [availability, setAvailability] = useState(null);
+  const [closedModalOpen, setClosedModalOpen] = useState(false);
+  const [sessionLocked, setSessionLocked] = useState(false);
+  const orderKeyRef = useRef("");
 
   // Token + language from RoomLanguagePage
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategory = searchParams.get("category");
 
-  const urlToken = searchParams.get("token") || "";
-  const langCode = searchParams.get("lang") || "bs";
-
-  //URL HIDDING
-  const tokenStorageKey = `room-token-${tableId}`;
-
-  if (urlToken) {
-    sessionStorage.setItem(tokenStorageKey, urlToken);
-  }
-
-  const token = urlToken || sessionStorage.getItem(tokenStorageKey) || "";
-
-  useEffect(() => {
-  if (urlToken) {
-    window.history.replaceState({}, "", `/t/${tableId}?lang=${langCode}`);
-  }
-}, [urlToken, tableId, langCode]);
+  const requestedLang = searchParams.get("lang") || "bs";
+  const langCode = ["bs", "en", "de", "tr", "ar"].includes(requestedLang) ? requestedLang : "bs";
 
   const langMap = {
     bs: 0,
@@ -295,7 +287,7 @@ export default function TablePage() {
   };
 
   const goBackToRoomChoice = () => {
-    navigate(`/t/${tableId}?token=${token}&lang=${langCode}`);
+    navigate(`/t/${tableId}?lang=${langCode}`);
   };
 
   const goBackToMenu = () => {
@@ -304,8 +296,27 @@ export default function TablePage() {
     setSearchParams(params);
   };
 
+  const clearInvalidSession = useCallback(() => {
+    sessionStorage.removeItem(cartStorageKey);
+    setCart({});
+    setSessionLocked(true);
+  }, [cartStorageKey]);
+
+  const loadAvailability = useCallback(async () => {
+    const response = await fetch(`${api}/api/public/room-service/availability`, { credentials: "include" });
+    if (response.status === 401 || response.status === 403) {
+      clearInvalidSession();
+      throw new Error("Sesija je istekla. Ponovo skenirajte QR kod sobe.");
+    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    setAvailability(data);
+    if (!data.isOpen) setClosedModalOpen(true);
+    return data;
+  }, [api, clearInvalidSession]);
+
   useEffect(() => {
-    fetch(`${api}/menu`)
+    fetch(`${api}/api/public/menu`, { credentials: "include" })
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -313,18 +324,30 @@ export default function TablePage() {
       .then((data) => setMenu(data))
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
-  }, [api]);
+    fetch(`${api}/api/public/room-session`, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Sesija je istekla. Ponovo skenirajte QR kod sobe.");
+        const data = await response.json();
+        if (String(data?.room?.id) !== String(tableId)) throw new Error("QR sesija pripada drugoj sobi.");
+      })
+      .catch((error) => { clearInvalidSession(); setErr(error.message); });
+    loadAvailability().catch((error) => setErr(error.message));
+  }, [api, tableId, loadAvailability, clearInvalidSession]);
+
+  useEffect(() => {
+    sessionStorage.setItem(cartStorageKey, JSON.stringify(cart));
+  }, [cart, cartStorageKey]);
 
   const categories = useMemo(() => menu, [menu]);
 
   const selectedCategoryObject = useMemo(() => {
     if (!selectedCategory) return null;
-    return menu.find((c) => c.name === selectedCategory) || null;
+    return menu.find((c) => c.id === selectedCategory) || null;
   }, [menu, selectedCategory]);
 
   const itemsForSelected = useMemo(() => {
     if (!selectedCategory) return [];
-    const cat = menu.find((c) => c.name === selectedCategory);
+    const cat = menu.find((c) => c.id === selectedCategory);
     const items = cat?.items || [];
     return items.map((it) => ({ ...it, category: selectedCategory }));
   }, [menu, selectedCategory]);
@@ -354,6 +377,10 @@ export default function TablePage() {
   const hasItems = cartItems.length > 0;
 
   const addItem = (it) => {
+    if (!availability?.isOpen || sessionLocked) {
+      setClosedModalOpen(true);
+      return;
+    }
     setPlacedMsg("");
     setErr("");
     setCallMsg("");
@@ -406,37 +433,51 @@ export default function TablePage() {
     setPlacedMsg("");
     setCallMsg("");
 
-    if (!hasItems) {
+    if (!hasItems || placing || sessionLocked) {
       setErr(t.emptyCart);
       return;
     }
 
     const payloadItems = cartItems.map((it) => ({
       itemId: it.itemId,
-      name: it.name,
-      price: it.price,
       qty: it.qty,
       note: it.note || "",
     }));
 
     setPlacing(true);
     try {
-      const body = { tableId, items: payloadItems };
-      if (token) body.token = token;
+      if (!availability?.isOpen) {
+        setClosedModalOpen(true);
+        return;
+      }
+      if (!orderKeyRef.current) orderKeyRef.current = crypto.randomUUID();
+      const body = { items: payloadItems };
 
       const res = await fetch(`${api}/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": orderKeyRef.current,
         },
+        credentials: "include",
         body: JSON.stringify(body),
       });
 
-      const text = await res.text();
-      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+      const responseBody = await res.json().catch(() => ({}));
+      if (res.status === 401 || res.status === 403) {
+        clearInvalidSession();
+        throw new Error("Sesija je istekla. Ponovo skenirajte QR kod sobe.");
+      }
+      if (res.status === 409 && responseBody.code === "ROOM_SERVICE_CLOSED") {
+        setAvailability(responseBody);
+        setClosedModalOpen(true);
+        throw new Error(responseBody.message || "Room service trenutno ne radi.");
+      }
+      if (!res.ok) throw new Error(responseBody.message || responseBody.error || `HTTP ${res.status}`);
 
       setCart({});
+      sessionStorage.removeItem(cartStorageKey);
+      orderKeyRef.current = "";
       setPlacedMsg(t.orderSuccess);
       setOrderPopupOpen(true);
       setCartOpen(false);
@@ -444,8 +485,8 @@ export default function TablePage() {
       const params = new URLSearchParams(searchParams);
       params.delete("category");
       setSearchParams(params);
-    } catch {
-      setErr(t.error);
+    } catch (error) {
+      setErr(error.message || t.error);
     } finally {
       setPlacing(false);
     }
@@ -459,12 +500,12 @@ export default function TablePage() {
 
     try {
       setCalling("waiter");
-      const body = { tableId, type: "waiter" };
-      if (token) body.token = token;
+      const body = { type: "waiter" };
 
       const res = await fetch(`${api}/calls`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
       });
 
@@ -578,7 +619,7 @@ export default function TablePage() {
                   <button
                     key={cat.id}
                     className="tp-categoryCard"
-                    onClick={() => openCategory(cat.name)}
+                    onClick={() => openCategory(cat.id)}
                     style={{ "--tp-accent": accent }}
                   >
                     <div className="tp-categoryName">{getCategoryName(cat)}</div>
@@ -618,6 +659,7 @@ export default function TablePage() {
                     <div className="tp-price">{it.price.toFixed(2)} KM</div>
                     <button
                       onClick={() => addItem(it)}
+                      disabled={!availability?.isOpen || sessionLocked || it.isAvailable === false}
                       className="tp-btn tp-btn--primary"
                     >
                       {t.add}
@@ -679,6 +721,7 @@ export default function TablePage() {
                           </button>
 
                           <button
+                            disabled={!availability?.isOpen || sessionLocked}
                             onClick={() =>
                               addItem({
                                 id: ci.itemId,
@@ -716,7 +759,7 @@ export default function TablePage() {
 
                 <button
                   onClick={placeOrder}
-                  disabled={placing || !hasItems}
+                  disabled={placing || !hasItems || !availability?.isOpen || sessionLocked}
                   className="tp-btn tp-btn--checkout"
                 >
                   {placing ? t.sending : t.finishOrder}
@@ -756,6 +799,29 @@ export default function TablePage() {
                 className="tp-btn tp-btn--checkout"
                 onClick={() => setOrderPopupOpen(false)}
               >
+                {t.ok}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {closedModalOpen && (
+          <div className="tp-modalOverlay" role="presentation" onClick={() => setClosedModalOpen(false)}>
+            <div className="tp-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+              <div className="tp-modalIcon">i</div>
+              <h3 className="tp-modalTitle">
+                {sessionLocked ? t.error : "Room service trenutno ne radi"}
+              </h3>
+              <p className="tp-modalText">
+                {sessionLocked
+                  ? "Sesija je istekla. Ponovo skenirajte QR kod sobe."
+                  : `${availability?.message || "Room service trenutno ne radi."}${
+                      availability?.todayHours
+                        ? ` Radno vrijeme: ${availability.todayHours.opensAt}–${availability.todayHours.closesAt}.`
+                        : ""
+                    }`}
+              </p>
+              <button className="tp-btn tp-btn--checkout" onClick={() => setClosedModalOpen(false)}>
                 {t.ok}
               </button>
             </div>

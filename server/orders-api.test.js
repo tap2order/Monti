@@ -8,6 +8,8 @@ process.env.STAFF_PIN = "123456";
 process.env.AUTH_SECRET = "test-secret-that-is-long-enough-for-signing";
 process.env.PUBLIC_CLIENT_URL = "http://localhost:5173";
 process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
+process.env.ROOM_SERVICE_OPENS_AT = "00:00";
+process.env.ROOM_SERVICE_CLOSES_AT = "00:00";
 
 let orders;
 const tables = new Map([["1", { id: "1", name: "Soba 1", token: "table-token", isActive: true }]]);
@@ -59,6 +61,10 @@ async function staffToken() {
   const response = await request("/auth/staff/login", { method: "POST", body: { pin: "123456" } });
   return (await response.json()).token;
 }
+async function roomCookie() {
+  const response = await request("/api/public/rooms/1/bootstrap", { method: "POST", body: { token: "table-token" } });
+  return response.headers.get("set-cookie").split(";")[0];
+}
 test.before(async () => { await new Promise((resolve) => { testServer = app.listen(0, "127.0.0.1", () => { baseUrl = `http://127.0.0.1:${testServer.address().port}`; resolve(); }); }); });
 test.after(async () => { await new Promise((resolve, reject) => testServer.close((error) => error ? reject(error) : resolve())); });
 test.beforeEach(reset);
@@ -69,19 +75,19 @@ test("anonymous and spoofed waiter headers cannot read orders", async () => {
 });
 test("staff token can read and claim an order", async () => {
   const token = await staffToken();
-  await request("/orders", { method: "POST", headers: { "Idempotency-Key": "request-key-000001" }, body: { tableId: "1", token: "table-token", items: [{ itemId: "coffee", qty: 1 }] } });
+  await request("/orders", { method: "POST", headers: { "Idempotency-Key": "request-key-000001", Cookie: await roomCookie() }, body: { items: [{ itemId: "coffee", qty: 1 }] } });
   const response = await request("/orders/order-1/claim", { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).status, "CLAIMED");
 });
 test("order prices and names are always snapshotted from the server menu", async () => {
-  const response = await request("/orders", { method: "POST", headers: { "Idempotency-Key": "request-key-000002" }, body: { tableId: "1", token: "table-token", items: [{ itemId: "coffee", name: "Free food", price: -100, qty: 2 }] } });
+  const response = await request("/orders", { method: "POST", headers: { "Idempotency-Key": "request-key-000002", Cookie: await roomCookie() }, body: { items: [{ itemId: "coffee", name: "Free food", price: -100, qty: 2 }] } });
   assert.equal(response.status, 201);
   const order = await response.json();
   assert.deepEqual(order.items[0], { id: "item-0", itemId: "coffee", name: "Coffee", price: 2.5, qty: 2, note: null });
 });
 test("idempotency key prevents duplicate orders", async () => {
-  const options = { method: "POST", headers: { "Idempotency-Key": "request-key-000003" }, body: { tableId: "1", token: "table-token", items: [{ itemId: "coffee", qty: 1 }] } };
+  const options = { method: "POST", headers: { "Idempotency-Key": "request-key-000003", Cookie: await roomCookie() }, body: { items: [{ itemId: "coffee", qty: 1 }] } };
   assert.equal((await request("/orders", options)).status, 201);
   assert.equal((await request("/orders", options)).status, 200);
   assert.equal(orders.length, 1);

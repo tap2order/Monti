@@ -8,13 +8,14 @@ datasource db {
 }
 
 model MenuCategory {
-  id    String     @id @default(cuid())
-  name  String     @unique
-  name1 String?
-  name2 String?
-  name3 String?
-  name4 String?
-  items MenuItem[]
+  id        String     @id @default(cuid())
+  name      String     @unique
+  name1     String?
+  name2     String?
+  name3     String?
+  name4     String?
+  sortOrder Int        @default(0)
+  items     MenuItem[]
 }
 
 model MenuItem {
@@ -26,6 +27,10 @@ model MenuItem {
   name4      String?
   imageUrl   String?
   price      Float
+  currency   String       @default("BAM")
+  sortOrder  Int          @default(0)
+  isActive   Boolean      @default(true)
+  isAvailable Boolean     @default(true)
   categoryId String
   category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -40,6 +45,8 @@ model Order {
   createdAt   DateTime    @default(now())
   claimedAt   DateTime?
   completedAt DateTime?
+  subtotal    Float       @default(0)
+  currency    String      @default("BAM")
   claimedById Int?
   claimedBy   Waiter?     @relation("OrderClaimedBy", fields: [claimedById], references: [id])
   items       OrderItem[]
