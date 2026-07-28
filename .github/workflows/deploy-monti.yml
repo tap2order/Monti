@@ -29,7 +29,5 @@ jobs:
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           fingerprint: ${{ secrets.VPS_SSH_FINGERPRINT }}
           command_timeout: 25m
-
-          script_stop: true
           script: |
             /usr/bin/sudo -n -H /usr/local/sbin/deploy-monti
