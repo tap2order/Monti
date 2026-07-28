@@ -105,6 +105,17 @@ model RoomVerificationSession {
   @@index([roomId, expiresAt])
 }
 
+model RoomServiceSettings {
+  id              String   @id @default("default")
+  enabled         Boolean  @default(false)
+  timezone        String   @default("Europe/Sarajevo")
+  weeklySchedule  Json?
+  temporaryClosed Boolean  @default(false)
+  closedMessage   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model Waiter {
   name          String
   pin           String?   @unique

@@ -4,6 +4,12 @@ const http = require("http");
 const { Server } = require("socket.io");
 const { PrismaClient } = require("@prisma/client");
 const crypto = require("crypto");
+const {
+  defaultSchedule,
+  getRoomServiceAvailability,
+  isValidTimezone,
+  normalizeSchedule,
+} = require("./roomServiceAvailability");
 
 require("dotenv").config();
 
@@ -18,11 +24,6 @@ const AUTH_SECRET = process.env.AUTH_SECRET;
 const ROOM_PENDING_TTL_SECONDS = Number(process.env.ROOM_PENDING_TTL_SECONDS || 5 * 60);
 const ROOM_VERIFIED_TTL_SECONDS = Number(process.env.ROOM_VERIFIED_TTL_SECONDS || 60 * 60);
 const ROOM_QR_ORIGIN = new URL(PUBLIC_CLIENT_URL).origin;
-const HOTEL_TIMEZONE = process.env.HOTEL_TIMEZONE || "Europe/Sarajevo";
-const ROOM_SERVICE_OPENS_AT = process.env.ROOM_SERVICE_OPENS_AT || "07:00";
-const ROOM_SERVICE_CLOSES_AT = process.env.ROOM_SERVICE_CLOSES_AT || "23:00";
-const ROOM_SERVICE_TEMPORARILY_CLOSED = process.env.ROOM_SERVICE_TEMPORARILY_CLOSED === "true";
-const ROOM_SERVICE_MESSAGE = process.env.ROOM_SERVICE_MESSAGE || "";
 
 if (!ADMIN_USER || !ADMIN_PASS || !STAFF_PIN || !AUTH_SECRET) {
   console.error("Missing ADMIN_USER, ADMIN_PASS, STAFF_PIN or AUTH_SECRET environment variables.");
@@ -171,29 +172,24 @@ async function requireVerifiedRoomSession(req, res, next) {
   }
 }
 
-function minutes(value) {
-  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
-  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+async function loadRoomServiceSettings() {
+  if (!prisma.roomServiceSettings?.findUnique) return null;
+  return prisma.roomServiceSettings.findUnique({ where: { id: "default" } });
 }
 
-function roomServiceAvailability(now = new Date()) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
-    timeZone: HOTEL_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).formatToParts(now).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-  const current = Number(parts.hour) * 60 + Number(parts.minute);
-  const opens = minutes(ROOM_SERVICE_OPENS_AT);
-  const closes = minutes(ROOM_SERVICE_CLOSES_AT);
-  const scheduledOpen = opens === closes || (opens < closes ? current >= opens && current < closes : current >= opens || current < closes);
-  const isOpen = !ROOM_SERVICE_TEMPORARILY_CLOSED && scheduledOpen;
-  const reason = ROOM_SERVICE_TEMPORARILY_CLOSED ? "temporary_closed" : isOpen ? null : "outside_operating_hours";
-  return {
-    isOpen, reason, timezone: HOTEL_TIMEZONE,
-    currentLocalTime: `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`,
-    todayHours: { opensAt: ROOM_SERVICE_OPENS_AT, closesAt: ROOM_SERVICE_CLOSES_AT },
-    nextOpenAt: `od ${ROOM_SERVICE_OPENS_AT}`,
-    message: ROOM_SERVICE_MESSAGE || (isOpen ? "Room service radi." : "Room service trenutno ne radi."),
-  };
+async function roomServiceAvailability(now = new Date()) {
+  return getRoomServiceAvailability(await loadRoomServiceSettings(), now);
+}
+
+function readRoomServiceSettingsPayload(payload) {
+  const timezone = String(payload?.timezone || "Europe/Sarajevo").trim();
+  if (!isValidTimezone(timezone)) throw Object.assign(new Error("Nevažeća vremenska zona."), { statusCode: 400 });
+  let weeklySchedule;
+  try { weeklySchedule = normalizeSchedule(payload?.weeklySchedule); }
+  catch (error) { throw Object.assign(error, { statusCode: 400 }); }
+  const closedMessage = String(payload?.closedMessage || "").trim();
+  if (closedMessage.length > 500) throw Object.assign(new Error("Poruka može imati najviše 500 znakova."), { statusCode: 400 });
+  return { enabled: Boolean(payload?.enabled), timezone, weeklySchedule, temporaryClosed: Boolean(payload?.temporaryClosed), closedMessage: closedMessage || null };
 }
 
 function bearerRole(req) {
@@ -340,7 +336,10 @@ app.post("/api/public/rooms/:tableId/bootstrap", rateLimit({ key: "room-bootstra
   }
 });
 app.get("/api/public/room-session", (req, res) => res.status(410).json({ code: "ROOM_VERIFICATION_REQUIRED" }));
-app.get("/api/public/room-service/availability", requireVerifiedRoomSession, (req, res) => res.json(roomServiceAvailability()));
+app.get("/api/public/room-service/availability", requireVerifiedRoomSession, async (_req, res) => {
+  try { res.json(await roomServiceAvailability()); }
+  catch (error) { console.error("room service availability failed", error); res.status(500).json({ error: "server error" }); }
+});
 app.post("/api/guest/room-session/bootstrap", rateLimit({ key: "guest-room-bootstrap", windowMs: 60_000, max: 20 }), async (req, res) => {
   try {
     const roomId = String(req.body?.roomId || "");
@@ -455,6 +454,39 @@ app.get("/menu", async (req, res) => {
   }
 });
 
+app.get("/api/admin/room-service-settings", requireAdmin, async (_req, res) => {
+  try {
+    const settings = await loadRoomServiceSettings();
+    res.json(settings || {
+      enabled: false,
+      timezone: "Europe/Sarajevo",
+      weeklySchedule: defaultSchedule(),
+      temporaryClosed: false,
+      closedMessage: null,
+    });
+  } catch (error) {
+    console.error("load room service settings failed", error);
+    res.status(500).json({ error: "Nije moguće učitati postavke." });
+  }
+});
+
+app.put("/api/admin/room-service-settings", requireAdmin, async (req, res) => {
+  try {
+    if (!prisma.roomServiceSettings?.upsert) return res.status(503).json({ error: "Migracija za postavke još nije primijenjena." });
+    const data = readRoomServiceSettingsPayload(req.body);
+    const saved = await prisma.roomServiceSettings.upsert({
+      where: { id: "default" },
+      create: { id: "default", ...data },
+      update: data,
+    });
+    res.json(saved);
+  } catch (error) {
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    console.error("save room service settings failed", error);
+    res.status(500).json({ error: "Nije moguće spremiti postavke." });
+  }
+});
+
 app.get("/api/public/menu", requireVerifiedRoomSession, async (req, res) => {
   try {
     const menu = await prisma.menuCategory.findMany({
@@ -536,7 +568,7 @@ app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), req
     const key = validIdempotencyKey(req.headers["idempotency-key"]);
     const items = req.body?.items;
     if (!key || !Array.isArray(items) || items.length < 1 || items.length > 30) return res.status(400).json({ error: "invalid order" });
-    const availability = roomServiceAvailability();
+    const availability = await roomServiceAvailability();
     if (!availability.isOpen) return res.status(409).json({ code: "ROOM_SERVICE_CLOSED", ...availability });
     const requested = new Map();
     for (const item of items) {

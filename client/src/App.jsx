@@ -9,6 +9,7 @@ import RoomScreenPage from "./pages/RoomScreenPage";
 import RoomLanguagePage from "./pages/RoomLanguagePage";
 import HotelServicesPage from "./pages/HotelServicesPage";
 import AdminOrdersOverviewPage from "./pages/AdminOrdersOverviewPage";
+import AdminRoomServiceHoursPage from "./pages/AdminRoomServiceHoursPage";
 import RoomSessionGate from "./components/RoomSessionGate";
 
 function GuestRoomLayout() {
@@ -34,6 +35,7 @@ export default function App() {
       <Route path="/admin/menu" element={<AdminMenuPage />} />
       <Route path="/t/:tableId/screen" element={<RoomScreenPage />} />
       <Route path="/admin/orders-overview" element={<AdminOrdersOverviewPage />} />
+      <Route path="/admin/room-service-hours" element={<AdminRoomServiceHoursPage />} />
       <Route
         path="*"
         element={

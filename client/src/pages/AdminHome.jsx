@@ -101,6 +101,20 @@ export default function AdminHome() {
             </div>
           </Link>
 
+          <Link to="/admin/room-service-hours" className="adminHomeCard">
+            <div className="adminHomeCardTop">
+              <div className="adminHomeIconWrap">
+                <span className="adminHomeIcon" aria-hidden="true">🕒</span>
+              </div>
+              <div className="adminHomeCardHeading">
+                <div className="adminHomeCardEyebrow">Room Service</div>
+                <div className="adminHomeCardTitle">Radno vrijeme</div>
+              </div>
+            </div>
+            <div className="adminHomeCardDesc">Odredite raspored rada i privremeno zatvorite Room Service.</div>
+            <div className="adminHomeCardFooter"><span className="adminHomeCardArrow" aria-hidden="true">→</span></div>
+          </Link>
+
           <Link to="/waiter" className="adminHomeCard">
             <div className="adminHomeCardTop">
               <div className="adminHomeIconWrap">
