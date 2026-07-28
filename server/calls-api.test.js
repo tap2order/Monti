@@ -12,8 +12,15 @@ process.env.ROOM_SERVICE_OPENS_AT = "00:00";
 process.env.ROOM_SERVICE_CLOSES_AT = "00:00";
 
 let calls;
+let roomSessions;
+const room = { id: "1", token: "table-token", isActive: true };
 const fakePrisma = {
-  table: { findUnique: async ({ where }) => String(where.id) === "1" ? { id: "1", token: "table-token", isActive: true } : null },
+  table: { findUnique: async ({ where }) => String(where.id) === "1" ? room : null },
+  roomVerificationSession: {
+    create: async ({ data }) => { const session = { id: `session-${roomSessions.length + 1}`, ...data, revokedAt: null }; roomSessions.push(session); return session; },
+    findUnique: async ({ where }) => { const session = roomSessions.find((item) => item.tokenHash === where.tokenHash); return session ? { ...session, room } : null; },
+    update: async ({ where, data }) => { const session = roomSessions.find((item) => item.id === where.id); Object.assign(session, data); return session; },
+  },
   call: {
     create: async ({ data }) => { const call = { id: `call-${calls.length + 1}`, ...data, createdAt: new Date(), handledAt: null, handledById: null }; calls.push(call); return call; },
     findMany: async ({ where }) => calls.filter((call) => call.status === where.status),
@@ -28,10 +35,10 @@ Module._load = originalLoad;
 let testServer; let baseUrl;
 async function request(path, options = {}) { const headers = { ...(options.headers || {}) }; if (options.body) headers["Content-Type"] ||= "application/json"; return fetch(`${baseUrl}${path}`, { ...options, headers, body: options.body && typeof options.body !== "string" ? JSON.stringify(options.body) : options.body }); }
 async function staffToken() { const response = await request("/auth/staff/login", { method: "POST", body: { pin: "123456" } }); return (await response.json()).token; }
-async function roomCookie() { const response = await request("/api/public/rooms/1/bootstrap", { method: "POST", body: { token: "table-token" } }); return response.headers.get("set-cookie").split(";")[0]; }
-test.before(async () => { calls = []; await new Promise((resolve) => { testServer = app.listen(0, "127.0.0.1", () => { baseUrl = `http://127.0.0.1:${testServer.address().port}`; resolve(); }); }); });
+async function roomCookie() { const response = await request("/api/guest/room-session/bootstrap", { method: "POST", body: { roomId: "1", token: "table-token" } }); const cookie = response.headers.get("set-cookie").split(";")[0]; await request("/api/guest/room-session/verify", { method: "POST", headers: { Cookie: cookie }, body: { scannedValue: "http://localhost:5173/t/1?token=table-token" } }); return cookie; }
+test.before(async () => { calls = []; roomSessions = []; await new Promise((resolve) => { testServer = app.listen(0, "127.0.0.1", () => { baseUrl = `http://127.0.0.1:${testServer.address().port}`; resolve(); }); }); });
 test.after(async () => { await new Promise((resolve, reject) => testServer.close((error) => error ? reject(error) : resolve())); });
-test.beforeEach(() => { calls = []; });
+test.beforeEach(() => { calls = []; roomSessions = []; });
 
 test("guest requires a valid room credential and allowed call type", async () => {
   assert.equal((await request("/calls", { method: "POST", body: { type: "waiter" } })).status, 401);

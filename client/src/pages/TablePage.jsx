@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { isRoomSessionError, lockRoomSession } from "../roomSession";
 import "../css/TablePage.css";
 
 export default function TablePage() {
@@ -305,7 +306,9 @@ export default function TablePage() {
   const loadAvailability = useCallback(async () => {
     const response = await fetch(`${api}/api/public/room-service/availability`, { credentials: "include" });
     if (response.status === 401 || response.status === 403) {
+      const data = await response.json().catch(() => ({}));
       clearInvalidSession();
+      if (isRoomSessionError(data.code)) lockRoomSession(data.code);
       throw new Error("Sesija je istekla. Ponovo skenirajte QR kod sobe.");
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -318,17 +321,21 @@ export default function TablePage() {
   useEffect(() => {
     fetch(`${api}/api/public/menu`, { credentials: "include" })
       .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          if (isRoomSessionError(data.code)) lockRoomSession(data.code);
+          throw new Error(data.message || `HTTP ${r.status}`);
+        }
+        return data;
       })
       .then((data) => setMenu(data))
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
-    fetch(`${api}/api/public/room-session`, { credentials: "include" })
+    fetch(`${api}/api/guest/room-session`, { credentials: "include" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Sesija je istekla. Ponovo skenirajte QR kod sobe.");
         const data = await response.json();
-        if (String(data?.room?.id) !== String(tableId)) throw new Error("QR sesija pripada drugoj sobi.");
+        if (data.status !== "verified" || String(data?.roomId) !== String(tableId)) throw new Error("QR sesija pripada drugoj sobi.");
       })
       .catch((error) => { clearInvalidSession(); setErr(error.message); });
     loadAvailability().catch((error) => setErr(error.message));
@@ -465,6 +472,7 @@ export default function TablePage() {
 
       const responseBody = await res.json().catch(() => ({}));
       if (res.status === 401 || res.status === 403) {
+        if (isRoomSessionError(responseBody.code)) lockRoomSession(responseBody.code);
         clearInvalidSession();
         throw new Error("Sesija je istekla. Ponovo skenirajte QR kod sobe.");
       }

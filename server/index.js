@@ -15,7 +15,9 @@ const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASS = process.env.ADMIN_PASS;
 const STAFF_PIN = process.env.STAFF_PIN;
 const AUTH_SECRET = process.env.AUTH_SECRET;
-const ROOM_SESSION_TTL_SECONDS = Number(process.env.ROOM_SESSION_TTL_SECONDS || 12 * 60 * 60);
+const ROOM_PENDING_TTL_SECONDS = Number(process.env.ROOM_PENDING_TTL_SECONDS || 5 * 60);
+const ROOM_VERIFIED_TTL_SECONDS = Number(process.env.ROOM_VERIFIED_TTL_SECONDS || 60 * 60);
+const HOTEL_ORIGIN = new URL(PUBLIC_CLIENT_URL).origin;
 const HOTEL_TIMEZONE = process.env.HOTEL_TIMEZONE || "Europe/Sarajevo";
 const ROOM_SERVICE_OPENS_AT = process.env.ROOM_SERVICE_OPENS_AT || "07:00";
 const ROOM_SERVICE_CLOSES_AT = process.env.ROOM_SERVICE_CLOSES_AT || "23:00";
@@ -66,30 +68,6 @@ function getTokenRole(token) {
   }
 }
 
-function signRoomSession(table) {
-  const payload = Buffer.from(JSON.stringify({
-    roomId: table.id,
-    tokenHash: crypto.createHash("sha256").update(table.token).digest("base64url"),
-    exp: Math.floor(Date.now() / 1000) + ROOM_SESSION_TTL_SECONDS,
-  })).toString("base64url");
-  const signature = crypto.createHmac("sha256", AUTH_SECRET).update(`room.${payload}`).digest("base64url");
-  return `${payload}.${signature}`;
-}
-
-function readRoomSession(token) {
-  if (!token || typeof token !== "string") return null;
-  const [payload, signature] = token.split(".");
-  if (!payload || !signature) return null;
-  const expected = crypto.createHmac("sha256", AUTH_SECRET).update(`room.${payload}`).digest("base64url");
-  if (!safeEqual(signature, expected)) return null;
-  try {
-    const value = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return value?.roomId && value?.tokenHash && value.exp > Math.floor(Date.now() / 1000) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
 function cookieValue(req, name) {
   const cookies = String(req.headers.cookie || "").split(";");
   const match = cookies.map((entry) => entry.trim().split("=")).find(([key]) => key === name);
@@ -97,6 +75,8 @@ function cookieValue(req, name) {
 }
 
 async function requireRoomSession(req, res, next) {
+  return requireVerifiedRoomSession(req, res, next);
+  /* istanbul ignore next */
   try {
     const session = readRoomSession(cookieValue(req, "room_session"));
     if (!session) return res.status(401).json({ code: "ROOM_SESSION_REQUIRED", message: "Ponovo skenirajte QR kod sobe." });
@@ -109,6 +89,71 @@ async function requireRoomSession(req, res, next) {
     next();
   } catch (error) {
     console.error("room session authentication failed", error);
+    res.status(500).json({ error: "server error" });
+  }
+}
+
+const roomCookieName = process.env.NODE_ENV === "production" ? "__Host-room_session" : "room_session";
+function roomSessionToken(req) {
+  return cookieValue(req, roomCookieName) || cookieValue(req, "room_session");
+}
+function hashSessionToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+function setRoomCookie(res, token, ttlSeconds) {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  res.setHeader("Set-Cookie", `${roomCookieName}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ttlSeconds}${secure}`);
+}
+async function createRoomSession(roomId, verified) {
+  const rawToken = randomToken(32);
+  const ttl = verified ? ROOM_VERIFIED_TTL_SECONDS : ROOM_PENDING_TTL_SECONDS;
+  const now = new Date();
+  await prisma.roomVerificationSession.create({
+    data: { tokenHash: hashSessionToken(rawToken), roomId, verifiedAt: verified ? now : null, expiresAt: new Date(now.getTime() + ttl * 1000) },
+  });
+  return { rawToken, ttl };
+}
+async function findDbRoomSession(req) {
+  const rawToken = roomSessionToken(req);
+  if (!rawToken) return null;
+  return prisma.roomVerificationSession.findUnique({ where: { tokenHash: hashSessionToken(rawToken) }, include: { room: true } });
+}
+function parseScannedRoomQr(scannedValue, expectedRoomId) {
+  if (typeof scannedValue !== "string" || scannedValue.length > 2048) return null;
+  try {
+    const url = new URL(scannedValue);
+    if (url.origin !== HOTEL_ORIGIN || url.username || url.password || url.pathname !== `/t/${encodeURIComponent(String(expectedRoomId))}` || url.hash) return null;
+    if ([...url.searchParams.keys()].some((key) => key !== "token") || url.searchParams.getAll("token").length !== 1) return null;
+    const token = url.searchParams.get("token");
+    return token ? { roomId: String(expectedRoomId), token } : null;
+  } catch {
+    return null;
+  }
+}
+async function validateScannedRoomQr(scannedValue, expectedRoomId) {
+  const parsed = parseScannedRoomQr(scannedValue, expectedRoomId);
+  if (!parsed) return null;
+  const room = await prisma.table.findUnique({ where: { id: parsed.roomId } });
+  return room && room.isActive && safeEqual(room.token, parsed.token) ? room : null;
+}
+async function requireVerifiedRoomSession(req, res, next) {
+  try {
+    const session = await findDbRoomSession(req);
+    if (!session) return res.status(401).json({ code: "ROOM_SESSION_REQUIRED", message: "Ponovo skenirajte QR kod sobe." });
+    if (session.revokedAt) return res.status(401).json({ code: "ROOM_SESSION_REVOKED", message: "Sesija sobe više nije važeća." });
+    if (session.expiresAt <= new Date()) return res.status(401).json({ code: "ROOM_SESSION_EXPIRED", message: "Sesija sobe je istekla." });
+    if (!session.verifiedAt) return res.status(403).json({ code: "ROOM_VERIFICATION_REQUIRED", message: "Potvrdite sobu skeniranjem QR koda." });
+    if (!session.room?.isActive) return res.status(401).json({ code: "ROOM_SESSION_REVOKED", message: "Sesija sobe više nije važeća." });
+    const suppliedRoomId = req.body?.roomId ?? req.query?.roomId ?? req.params?.roomId ?? req.params?.tableId;
+    if (suppliedRoomId !== undefined && String(suppliedRoomId) !== String(session.roomId)) {
+      return res.status(403).json({ code: "ROOM_SESSION_ROOM_MISMATCH", message: "Sesija ne pripada traženoj sobi." });
+    }
+    req.room = session.room;
+    req.table = session.room;
+    req.roomSession = session;
+    next();
+  } catch (error) {
+    console.error("verified room session authentication failed", error);
     res.status(500).json({ error: "server error" });
   }
 }
@@ -233,7 +278,7 @@ app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
   next();
 });
 app.use(cors({
@@ -266,6 +311,8 @@ io.on("connection", (socket) => {
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 app.post("/api/public/rooms/:tableId/bootstrap", rateLimit({ key: "room-bootstrap", windowMs: 60_000, max: 20 }), async (req, res) => {
   try {
+    return res.status(410).json({ code: "ROOM_VERIFICATION_REQUIRED", message: "Koristite dvostepenu QR verifikaciju." });
+    /* istanbul ignore next */
     const table = await prisma.table.findUnique({ where: { id: String(req.params.tableId) } });
     const token = String(req.body?.token || "");
     if (!table || !table.isActive || !token || !safeEqual(table.token, token)) {
@@ -279,8 +326,76 @@ app.post("/api/public/rooms/:tableId/bootstrap", rateLimit({ key: "room-bootstra
     res.status(500).json({ error: "server error" });
   }
 });
-app.get("/api/public/room-session", requireRoomSession, (req, res) => res.json({ room: { id: req.table.id, displayName: req.table.name || `Soba ${req.table.id}` } }));
-app.get("/api/public/room-service/availability", requireRoomSession, (req, res) => res.json(roomServiceAvailability()));
+app.get("/api/public/room-session", (req, res) => res.status(410).json({ code: "ROOM_VERIFICATION_REQUIRED" }));
+app.get("/api/public/room-service/availability", requireVerifiedRoomSession, (req, res) => res.json(roomServiceAvailability()));
+app.post("/api/guest/room-session/bootstrap", rateLimit({ key: "guest-room-bootstrap", windowMs: 60_000, max: 20 }), async (req, res) => {
+  try {
+    const roomId = String(req.body?.roomId || "");
+    const token = String(req.body?.token || "");
+    const room = roomId ? await prisma.table.findUnique({ where: { id: roomId } }) : null;
+    if (!room || !room.isActive || !token || !safeEqual(room.token, token)) {
+      return res.status(403).json({ code: "INVALID_ROOM_QR", message: "QR kod sobe nije važeći." });
+    }
+    const existing = await findDbRoomSession(req);
+    if (existing && !existing.revokedAt) await prisma.roomVerificationSession.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
+    const created = await createRoomSession(room.id, false);
+    setRoomCookie(res, created.rawToken, created.ttl);
+    res.status(201).json({ status: "verification_required" });
+  } catch (error) {
+    console.error("guest room bootstrap failed", error);
+    res.status(500).json({ error: "server error" });
+  }
+});
+app.get("/api/guest/room-session", async (req, res) => {
+  try {
+    const session = await findDbRoomSession(req);
+    if (!session) return res.json({ status: "anonymous" });
+    if (session.revokedAt || session.expiresAt <= new Date() || !session.room?.isActive) return res.json({ status: "expired", roomId: session.roomId });
+    res.json({
+      status: session.verifiedAt ? "verified" : "verification_required",
+      roomId: session.roomId,
+      room: { id: session.room.id, displayName: session.room.name || `Soba ${session.room.id}` },
+      expiresAt: session.expiresAt,
+    });
+  } catch (error) {
+    console.error("guest room session status failed", error);
+    res.status(500).json({ error: "server error" });
+  }
+});
+app.post("/api/guest/room-session/verify", async (req, res) => {
+  try {
+    const session = await findDbRoomSession(req);
+    if (!session) return res.status(401).json({ code: "ROOM_SESSION_REQUIRED" });
+    if (session.revokedAt) return res.status(401).json({ code: "ROOM_SESSION_REVOKED" });
+    if (session.expiresAt <= new Date()) return res.status(401).json({ code: "ROOM_SESSION_EXPIRED" });
+    if (session.verifiedAt) return res.json({ status: "verified", roomId: session.roomId });
+    const room = await validateScannedRoomQr(req.body?.scannedValue, session.roomId);
+    if (!room) return res.status(403).json({ code: "INVALID_ROOM_QR", message: "Skenirani QR kod nije važeći." });
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + ROOM_VERIFIED_TTL_SECONDS * 1000);
+    await prisma.roomVerificationSession.update({ where: { id: session.id }, data: { verifiedAt: now, expiresAt } });
+    setRoomCookie(res, roomSessionToken(req), ROOM_VERIFIED_TTL_SECONDS);
+    res.json({ status: "verified", roomId: room.id, expiresAt });
+  } catch (error) {
+    console.error("guest room verification failed", error);
+    res.status(500).json({ error: "server error" });
+  }
+});
+app.post("/api/guest/room-session/reverify", async (req, res) => {
+  try {
+    const roomId = String(req.body?.roomId || "");
+    const room = await validateScannedRoomQr(req.body?.scannedValue, roomId);
+    if (!room) return res.status(403).json({ code: "INVALID_ROOM_QR", message: "Skenirani QR kod nije važeći." });
+    const existing = await findDbRoomSession(req);
+    if (existing && !existing.revokedAt) await prisma.roomVerificationSession.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
+    const created = await createRoomSession(room.id, true);
+    setRoomCookie(res, created.rawToken, created.ttl);
+    res.status(201).json({ status: "verified", roomId: room.id });
+  } catch (error) {
+    console.error("guest room reverification failed", error);
+    res.status(500).json({ error: "server error" });
+  }
+});
 app.post("/auth/admin/login", rateLimit({ key: "admin-login", windowMs: 15 * 60_000, max: 8 }), (req, res) => {
   const username = text(req.body?.username, { required: true, max: 128 });
   const password = text(req.body?.password, { required: true, max: 256 });
@@ -304,7 +419,7 @@ app.get("/menu", async (req, res) => {
   }
 });
 
-app.get("/api/public/menu", async (req, res) => {
+app.get("/api/public/menu", requireVerifiedRoomSession, async (req, res) => {
   try {
     const menu = await prisma.menuCategory.findMany({
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -380,7 +495,7 @@ app.delete("/menu-item/:id", requireAdmin, async (req, res) => {
   catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "Item not found" }); console.error("delete item failed", error); res.status(500).json({ error: "Failed to delete item" }); }
 });
 
-app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), requireRoomSession, async (req, res) => {
+app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), requireVerifiedRoomSession, async (req, res) => {
   try {
     const key = validIdempotencyKey(req.headers["idempotency-key"]);
     const items = req.body?.items;
@@ -435,7 +550,7 @@ app.delete("/orders/:orderId", requireAdmin, async (req, res) => {
   catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "order not found" }); console.error("delete order failed", error); res.status(500).json({ error: "server error" }); }
 });
 
-app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requireRoomSession, async (req, res) => {
+app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requireVerifiedRoomSession, async (req, res) => {
   try {
     const type = ["waiter", "bill"].includes(req.body?.type) ? req.body.type : null;
     if (!type) return res.status(400).json({ error: "invalid call type" });
@@ -484,7 +599,12 @@ app.delete("/api/admin/tables/:tableId", async (req, res) => {
   catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "table not found" }); console.error("delete table failed", error); res.status(500).json({ error: "Unable to delete table" }); }
 });
 app.post("/api/admin/tables/:tableId/rotate-token", async (req, res) => {
-  try { const table = await prisma.table.update({ where: { id: String(req.params.tableId) }, data: { token: randomToken() }, select: { id: true, name: true, token: true, isActive: true, createdAt: true } }); res.json({ ok: true, table }); }
+  try {
+    const roomId = String(req.params.tableId);
+    const table = await prisma.table.update({ where: { id: roomId }, data: { token: randomToken() }, select: { id: true, name: true, token: true, isActive: true, createdAt: true } });
+    await prisma.roomVerificationSession.updateMany({ where: { roomId, revokedAt: null }, data: { revokedAt: new Date() } });
+    res.json({ ok: true, table });
+  }
   catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "table not found" }); console.error("rotate token failed", error); res.status(500).json({ error: "Unable to rotate token" }); }
 });
 app.get("/api/admin/tables/:tableId/scan-url", async (req, res) => {
@@ -503,4 +623,4 @@ app.use((error, req, res, next) => {
 });
 
 if (require.main === module) server.listen(PORT, "127.0.0.1", () => console.log(`Server running on port ${PORT}`));
-module.exports = { app, server, io, prisma, requireAdmin, requireValidTable, requireStaffOrAdminAuth, getTokenRole };
+module.exports = { app, server, io, prisma, requireAdmin, requireValidTable, requireVerifiedRoomSession, requireStaffOrAdminAuth, getTokenRole };

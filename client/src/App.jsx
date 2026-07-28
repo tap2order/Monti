@@ -9,19 +9,20 @@ import RoomScreenPage from "./pages/RoomScreenPage";
 import RoomLanguagePage from "./pages/RoomLanguagePage";
 import HotelServicesPage from "./pages/HotelServicesPage";
 import AdminOrdersOverviewPage from "./pages/AdminOrdersOverviewPage";
+import RoomSessionGate from "./components/RoomSessionGate";
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/t/:tableId" element={<RoomLanguagePage />} />
-      <Route path="/t/:tableId/menu" element={<TablePage />} />
+      <Route path="/t/:tableId" element={<RoomSessionGate><RoomLanguagePage /></RoomSessionGate>} />
+      <Route path="/t/:tableId/menu" element={<RoomSessionGate><TablePage /></RoomSessionGate>} />
       <Route path="/waiter" element={<WaiterPage />} />
       <Route path="/admin/tables" element={<TablesDemoPage />} />
       <Route path="/admin/home" element={<AdminHome />} />
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/menu" element={<AdminMenuPage />} />
       <Route path="/t/:tableId/screen" element={<RoomScreenPage />} />
-      <Route path="/t/:tableId/services" element={<HotelServicesPage />} />
+      <Route path="/t/:tableId/services" element={<RoomSessionGate><HotelServicesPage /></RoomSessionGate>} />
       <Route path="/admin/orders-overview" element={<AdminOrdersOverviewPage />} />
       <Route
         path="*"

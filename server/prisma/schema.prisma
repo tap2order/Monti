@@ -84,11 +84,25 @@ model Call {
 }
 
 model Table {
-  id        String   @id
-  name      String?
-  token     String   @unique
-  isActive  Boolean  @default(true)
+  id                   String                    @id
+  name                 String?
+  token                String                    @unique
+  isActive             Boolean                   @default(true)
+  createdAt            DateTime                  @default(now())
+  verificationSessions RoomVerificationSession[]
+}
+
+model RoomVerificationSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  roomId    String
+  room      Table    @relation(fields: [roomId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  verifiedAt DateTime?
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([roomId, expiresAt])
 }
 
 model Waiter {

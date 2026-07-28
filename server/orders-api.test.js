@@ -12,13 +12,22 @@ process.env.ROOM_SERVICE_OPENS_AT = "00:00";
 process.env.ROOM_SERVICE_CLOSES_AT = "00:00";
 
 let orders;
-const tables = new Map([["1", { id: "1", name: "Soba 1", token: "table-token", isActive: true }]]);
+let roomSessions;
+const tables = new Map([
+  ["1", { id: "1", name: "Soba 1", token: "table-token", isActive: true }],
+  ["2", { id: "2", name: "Soba 2", token: "second-token", isActive: true }],
+]);
 const menuItems = [{ id: "coffee", name: "Coffee", price: 2.5 }];
-function reset() { orders = []; }
+function reset() { orders = []; roomSessions = []; }
 reset();
 
 const fakePrisma = {
   table: { findUnique: async ({ where }) => tables.get(String(where.id)) || null },
+  roomVerificationSession: {
+    create: async ({ data }) => { const session = { id: `session-${roomSessions.length + 1}`, ...data, revokedAt: null }; roomSessions.push(session); return session; },
+    findUnique: async ({ where }) => { const session = roomSessions.find((item) => item.tokenHash === where.tokenHash); return session ? { ...session, room: tables.get(session.roomId) } : null; },
+    update: async ({ where, data }) => { const session = roomSessions.find((item) => item.id === where.id); Object.assign(session, data); return session; },
+  },
   menuItem: { findMany: async ({ where }) => menuItems.filter((item) => where.id.in.includes(item.id)) },
   order: {
     findUnique: async ({ where }) => orders.find((order) => order.id === where.id || order.clientRequestId === where.clientRequestId) || null,
@@ -62,7 +71,15 @@ async function staffToken() {
   return (await response.json()).token;
 }
 async function roomCookie() {
-  const response = await request("/api/public/rooms/1/bootstrap", { method: "POST", body: { token: "table-token" } });
+  const response = await request("/api/guest/room-session/bootstrap", { method: "POST", body: { roomId: "1", token: "table-token" } });
+  const cookie = response.headers.get("set-cookie").split(";")[0];
+  const verified = await request("/api/guest/room-session/verify", { method: "POST", headers: { Cookie: cookie }, body: { scannedValue: "http://localhost:5173/t/1?token=table-token" } });
+  assert.equal(verified.status, 200);
+  return cookie;
+}
+async function pendingCookie() {
+  const response = await request("/api/guest/room-session/bootstrap", { method: "POST", body: { roomId: "1", token: "table-token" } });
+  assert.equal(response.status, 201);
   return response.headers.get("set-cookie").split(";")[0];
 }
 test.before(async () => { await new Promise((resolve) => { testServer = app.listen(0, "127.0.0.1", () => { baseUrl = `http://127.0.0.1:${testServer.address().port}`; resolve(); }); }); });
@@ -91,4 +108,66 @@ test("idempotency key prevents duplicate orders", async () => {
   assert.equal((await request("/orders", options)).status, 201);
   assert.equal((await request("/orders", options)).status, 200);
   assert.equal(orders.length, 1);
+});
+
+test("pending session survives refresh but cannot access protected endpoints", async () => {
+  const cookie = await pendingCookie();
+  const status = await request("/api/guest/room-session", { headers: { Cookie: cookie } });
+  assert.equal((await status.json()).status, "verification_required");
+  const blocked = await request("/api/public/menu", { headers: { Cookie: cookie } });
+  assert.equal(blocked.status, 403);
+  assert.equal((await blocked.json()).code, "ROOM_VERIFICATION_REQUIRED");
+});
+
+test("verification rejects wrong origin, path, extra query and duplicate token", async () => {
+  for (const scannedValue of [
+    "https://evil.example/t/1?token=table-token",
+    "http://localhost:5173/t/1/extra?token=table-token",
+    "http://localhost:5173/t/1?token=table-token&extra=1",
+    "http://localhost:5173/t/1?token=table-token&token=table-token",
+  ]) {
+    const response = await request("/api/guest/room-session/verify", {
+      method: "POST", headers: { Cookie: await pendingCookie() }, body: { scannedValue },
+    });
+    assert.equal(response.status, 403);
+  }
+});
+
+test("verification rejects a QR for another room", async () => {
+  const response = await request("/api/guest/room-session/verify", {
+    method: "POST",
+    headers: { Cookie: await pendingCookie() },
+    body: { scannedValue: "http://localhost:5173/t/2?token=second-token" },
+  });
+  assert.equal(response.status, 403);
+});
+
+test("expired, revoked and room-mismatched sessions are blocked", async () => {
+  const expiredCookie = await roomCookie();
+  roomSessions.at(-1).expiresAt = new Date(Date.now() - 1000);
+  assert.equal((await request("/api/public/room-service/availability", { headers: { Cookie: expiredCookie } })).status, 401);
+
+  const revokedCookie = await roomCookie();
+  roomSessions.at(-1).revokedAt = new Date();
+  const revoked = await request("/api/public/room-service/availability", { headers: { Cookie: revokedCookie } });
+  assert.equal((await revoked.json()).code, "ROOM_SESSION_REVOKED");
+
+  const validCookie = await roomCookie();
+  const mismatch = await request("/api/public/room-service/availability?roomId=2", { headers: { Cookie: validCookie } });
+  assert.equal(mismatch.status, 403);
+  assert.equal((await mismatch.json()).code, "ROOM_SESSION_ROOM_MISMATCH");
+});
+
+test("reverify replaces an expired session with an immediately verified session", async () => {
+  const oldCookie = await roomCookie();
+  roomSessions.at(-1).expiresAt = new Date(Date.now() - 1000);
+  const response = await request("/api/guest/room-session/reverify", {
+    method: "POST",
+    headers: { Cookie: oldCookie },
+    body: { roomId: "1", scannedValue: "http://localhost:5173/t/1?token=table-token" },
+  });
+  assert.equal(response.status, 201);
+  const newCookie = response.headers.get("set-cookie").split(";")[0];
+  const status = await request("/api/guest/room-session", { headers: { Cookie: newCookie } });
+  assert.equal((await status.json()).status, "verified");
 });

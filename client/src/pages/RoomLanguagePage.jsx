@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import "../css/RoomChoicePage.css";
 
@@ -6,39 +6,10 @@ export default function RoomLanguagePage() {
   const navigate = useNavigate();
   const { tableId } = useParams();
   const [searchParams] = useSearchParams();
-  const api = import.meta.env.VITE_API_URL || "";
-
-  const urlToken = searchParams.get("token") || "";
   const initialLang = searchParams.get("lang") || "bs";
 
   const [selectedLang, setSelectedLang] = useState(initialLang);
   const [languageConfirmed, setLanguageConfirmed] = useState(false);
-  const [sessionState, setSessionState] = useState("loading");
-  const [sessionError, setSessionError] = useState("");
-
-  useEffect(() => {
-    let active = true;
-    async function establishSession() {
-      try {
-        const response = await fetch(
-          urlToken ? `${api}/api/public/rooms/${encodeURIComponent(tableId)}/bootstrap` : `${api}/api/public/room-session`,
-          urlToken
-            ? { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: urlToken }) }
-            : { credentials: "include" }
-        );
-        if (!response.ok) throw new Error("Ponovo skenirajte QR kod sobe.");
-        const data = await response.json();
-        if (String(data?.room?.id) !== String(tableId)) throw new Error("QR sesija pripada drugoj sobi.");
-        if (urlToken) window.history.replaceState({}, "", `/t/${tableId}?lang=${initialLang}`);
-        if (active) setSessionState("ready");
-      } catch (error) {
-        if (active) { setSessionError(error.message); setSessionState("error"); }
-      }
-    }
-    establishSession();
-    return () => { active = false; };
-  }, [api, urlToken, tableId, initialLang]);
-
   const isRtl = selectedLang === "ar";
 
   const text = {
@@ -123,18 +94,6 @@ export default function RoomLanguagePage() {
   const goToServices = () => {
     navigate(`/t/${tableId}/services?lang=${selectedLang}`);
   };
-
-  if (sessionState !== "ready") {
-    return (
-      <div className="choicePage">
-        <div className="choiceCard">
-          <p className="choiceEyebrow">ROOM SERVICE</p>
-          <h1 className="choiceTitle">{sessionState === "loading" ? "Provjera sobe…" : "QR sesija nije važeća"}</h1>
-          {sessionError && <p className="choiceSubtitle">{sessionError}</p>}
-        </div>
-      </div>
-    );
-  }
 
   if (!languageConfirmed) {
     return (
