@@ -5,11 +5,13 @@ import "../css/RoomChoicePage.css";
 export default function RoomLanguagePage() {
   const navigate = useNavigate();
   const { tableId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialLang = searchParams.get("lang") || "bs";
 
   const [selectedLang, setSelectedLang] = useState(initialLang);
-  const [languageConfirmed, setLanguageConfirmed] = useState(false);
+  const [languageConfirmed, setLanguageConfirmed] = useState(
+    () => searchParams.get("view") === "options"
+  );
   const isRtl = selectedLang === "ar";
 
   const text = {
@@ -85,6 +87,10 @@ export default function RoomLanguagePage() {
   const selectLanguage = (lang) => {
     setSelectedLang(lang);
     setLanguageConfirmed(true);
+    const params = new URLSearchParams(searchParams);
+    params.set("lang", lang);
+    params.set("view", "options");
+    setSearchParams(params, { replace: true });
   };
 
   const goToMenu = () => {
@@ -93,6 +99,13 @@ export default function RoomLanguagePage() {
 
   const goToServices = () => {
     navigate(`/t/${tableId}/services?lang=${selectedLang}`);
+  };
+
+  const goBackToLanguages = () => {
+    setLanguageConfirmed(false);
+    const params = new URLSearchParams(searchParams);
+    params.delete("view");
+    setSearchParams(params, { replace: true });
   };
 
   if (!languageConfirmed) {
@@ -174,7 +187,7 @@ export default function RoomLanguagePage() {
         <button
           className="guestBackBtn"
           type="button"
-          onClick={() => setLanguageConfirmed(false)}
+          onClick={goBackToLanguages}
         >
           ← {t.back}
         </button>

@@ -298,7 +298,7 @@ export default function TablePage() {
   };
 
   const goBackToRoomChoice = () => {
-    navigate(`/t/${tableId}?lang=${langCode}`);
+    navigate(`/t/${tableId}?lang=${langCode}&view=options`);
   };
 
   const goBackToCategories = () => {
