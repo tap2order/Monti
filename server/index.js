@@ -10,7 +10,7 @@ require("dotenv").config();
 const app = express();
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT || 4000);
-const PUBLIC_CLIENT_URL = process.env.PUBLIC_CLIENT_URL || "https://demo.tap2order.ba";
+const PUBLIC_CLIENT_URL = process.env.PUBLIC_CLIENT_URL || "https://monti.tap2order.ba";
 const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASS = process.env.ADMIN_PASS;
 const STAFF_PIN = process.env.STAFF_PIN;
