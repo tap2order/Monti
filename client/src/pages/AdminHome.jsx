@@ -23,16 +23,10 @@ export default function AdminHome() {
               iz jednog preglednog admin centra.
             </p> */}
           </div>
-
-          <div className="adminHomeHeroActions">
-            <Link className="adminHomeBtn adminHomeBtnPrimary" to="/waiter">
-              Otvori dashboard za osoblje
-            </Link>
-          </div>
         </div>
 
         <div className="adminHomeGrid">
-          <Link to="/admin/tables" className="adminHomeCard is-featured">
+          {/* <Link to="/admin/tables" className="adminHomeCard is-featured">
             <div className="adminHomeCardTop">
               <div className="adminHomeIconWrap">
                 <span className="adminHomeIcon" aria-hidden="true">
@@ -55,7 +49,7 @@ export default function AdminHome() {
                 →
               </span>
             </div>
-          </Link>
+          </Link> */}
 
           <Link to="/admin/menu" className="adminHomeCard">
             <div className="adminHomeCardTop">
@@ -98,6 +92,26 @@ export default function AdminHome() {
 
             <div className="adminHomeCardDesc">
               Pregled svih narudžbi, vremena kreiranja, preuzimanja i završavanja.
+            </div>
+
+            <div className="adminHomeCardFooter">
+              <span className="adminHomeCardArrow" aria-hidden="true">
+                →
+              </span>
+            </div>
+          </Link>
+
+          <Link to="/waiter" className="adminHomeCard">
+            <div className="adminHomeCardTop">
+              <div className="adminHomeIconWrap">
+                <span className="adminHomeIcon" aria-hidden="true">
+                  👥
+                </span>
+              </div>
+
+              <div className="adminHomeCardHeading">
+                <div className="adminHomeCardTitle">Dashboard za osoblje</div>
+              </div>
             </div>
 
             <div className="adminHomeCardFooter">

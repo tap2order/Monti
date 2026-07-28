@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { isRoomSessionError, lockRoomSession } from "../roomSession";
 import "../css/TablePage.css";
 
 export default function TablePage() {
   const { tableId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const api = import.meta.env.VITE_API_URL;
 
   const [menu, setMenu] = useState([]);
@@ -23,15 +24,20 @@ export default function TablePage() {
   const [callMsg, setCallMsg] = useState("");
   const [orderPopupOpen, setOrderPopupOpen] = useState(false);
   const [staffPopupOpen, setStaffPopupOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
   const [availability, setAvailability] = useState(null);
-  const [closedModalOpen, setClosedModalOpen] = useState(false);
   const [sessionLocked, setSessionLocked] = useState(false);
   const orderKeyRef = useRef("");
+  const locationRef = useRef(location);
+  const searchParamsRef = useRef(null);
+  const backActionRef = useRef(null);
 
   // Token + language from RoomLanguagePage
   const [searchParams, setSearchParams] = useSearchParams();
+  locationRef.current = location;
+  searchParamsRef.current = searchParams;
   const selectedCategory = searchParams.get("category");
+  const cartOpen = searchParams.get("cart") === "open";
+  const closedModalOpen = location.state?.guestFlowOverlay === "closed";
 
   const requestedLang = searchParams.get("lang") || "bs";
   const langCode = ["bs", "en", "de", "tr", "ar"].includes(requestedLang) ? requestedLang : "bs";
@@ -284,18 +290,100 @@ export default function TablePage() {
   const openCategory = (cat) => {
     const params = new URLSearchParams(searchParams);
     params.set("category", cat);
-    setSearchParams(params);
+    params.delete("cart");
+    setSearchParams(params, {
+      replace: false,
+      state: { ...location.state, guestFlowParent: "menu-categories", guestFlowOverlay: undefined },
+    });
   };
 
   const goBackToRoomChoice = () => {
     navigate(`/t/${tableId}?lang=${langCode}`);
   };
 
-  const goBackToMenu = () => {
+  const goBackToCategories = () => {
+    if (location.state?.guestFlowParent === "menu-categories") {
+      navigate(-1);
+      return;
+    }
     const params = new URLSearchParams(searchParams);
     params.delete("category");
-    setSearchParams(params);
+    params.delete("cart");
+    setSearchParams(params, { replace: true });
   };
+
+  const openCart = () => {
+    const params = new URLSearchParams(searchParams);
+    params.set("cart", "open");
+    setSearchParams(params, {
+      replace: false,
+      state: { ...location.state, guestFlowOverlay: "cart" },
+    });
+  };
+
+  const closeCart = ({ replace = false } = {}) => {
+    if (!replace && location.state?.guestFlowOverlay === "cart") {
+      navigate(-1);
+      return;
+    }
+    const params = new URLSearchParams(searchParams);
+    params.delete("cart");
+    setSearchParams(params, {
+      replace: true,
+      state: { ...location.state, guestFlowOverlay: undefined },
+    });
+  };
+
+  const openClosedModal = useCallback(() => {
+    const currentLocation = locationRef.current;
+    if (currentLocation.state?.guestFlowOverlay === "closed") return;
+    setSearchParams(new URLSearchParams(searchParamsRef.current), {
+      replace: false,
+      state: { ...currentLocation.state, guestFlowOverlay: "closed" },
+    });
+  }, [setSearchParams]);
+
+  const closeClosedModal = () => {
+    if (location.state?.guestFlowOverlay === "closed") {
+      navigate(-1);
+      return;
+    }
+  };
+
+  const handleBack = () => {
+    if (orderPopupOpen) {
+      setOrderPopupOpen(false);
+      return;
+    }
+    if (staffPopupOpen) {
+      setStaffPopupOpen(false);
+      return;
+    }
+    if (closedModalOpen) {
+      closeClosedModal();
+      return;
+    }
+    if (cartOpen) {
+      closeCart();
+      return;
+    }
+    if (selectedCategory) {
+      goBackToCategories();
+      return;
+    }
+    goBackToRoomChoice();
+  };
+  backActionRef.current = handleBack;
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      backActionRef.current?.();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const clearInvalidSession = useCallback(() => {
     sessionStorage.removeItem(cartStorageKey);
@@ -314,9 +402,9 @@ export default function TablePage() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     setAvailability(data);
-    if (!data.isOpen) setClosedModalOpen(true);
+    if (!data.isOpen) openClosedModal();
     return data;
-  }, [api, clearInvalidSession]);
+  }, [api, clearInvalidSession, openClosedModal]);
 
   useEffect(() => {
     fetch(`${api}/api/public/menu`, { credentials: "include" })
@@ -385,7 +473,7 @@ export default function TablePage() {
 
   const addItem = (it) => {
     if (!availability?.isOpen || sessionLocked) {
-      setClosedModalOpen(true);
+      openClosedModal();
       return;
     }
     setPlacedMsg("");
@@ -454,7 +542,7 @@ export default function TablePage() {
     setPlacing(true);
     try {
       if (!availability?.isOpen) {
-        setClosedModalOpen(true);
+        openClosedModal();
         return;
       }
       if (!orderKeyRef.current) orderKeyRef.current = crypto.randomUUID();
@@ -478,7 +566,7 @@ export default function TablePage() {
       }
       if (res.status === 409 && responseBody.code === "ROOM_SERVICE_CLOSED") {
         setAvailability(responseBody);
-        setClosedModalOpen(true);
+        openClosedModal();
         throw new Error(responseBody.message || "Room service trenutno ne radi.");
       }
       if (!res.ok) throw new Error(responseBody.message || responseBody.error || `HTTP ${res.status}`);
@@ -488,11 +576,14 @@ export default function TablePage() {
       orderKeyRef.current = "";
       setPlacedMsg(t.orderSuccess);
       setOrderPopupOpen(true);
-      setCartOpen(false);
 
       const params = new URLSearchParams(searchParams);
       params.delete("category");
-      setSearchParams(params);
+      params.delete("cart");
+      setSearchParams(params, {
+        replace: true,
+        state: { ...location.state, guestFlowParent: undefined, guestFlowOverlay: undefined },
+      });
     } catch (error) {
       setErr(error.message || t.error);
     } finally {
@@ -544,7 +635,7 @@ export default function TablePage() {
         <button
           className="guestBackBtn"
           type="button"
-          onClick={goBackToRoomChoice}
+          onClick={handleBack}
         >
           ← {t.back}
         </button>
@@ -586,7 +677,7 @@ export default function TablePage() {
 
         <div className="tp-card">
           {selectedCategory && (
-            <button className="tp-backButton" onClick={goBackToMenu}>
+            <button className="tp-backButton" onClick={goBackToCategories}>
               ← {t.allCategories}
             </button>
           )}
@@ -680,7 +771,7 @@ export default function TablePage() {
         </div>
 
         {cartOpen && (
-          <div className="tp-drawerOverlay" role="presentation" onClick={() => setCartOpen(false)}>
+          <div className="tp-drawerOverlay" role="presentation" onClick={() => closeCart()}>
             <div className="tp-drawer" role="dialog" aria-modal="true" aria-label={t.cart} onClick={(e) => e.stopPropagation()}>
               <div className="tp-drawerHeader">
                 <div>
@@ -692,7 +783,7 @@ export default function TablePage() {
 
                 <button
                   className="tp-btn tp-btn--icon"
-                  onClick={() => setCartOpen(false)}
+                  onClick={() => closeCart()}
                   aria-label={t.closeCart}
                   title={t.close}
                 >
@@ -783,7 +874,7 @@ export default function TablePage() {
           <button
             type="button"
             className="tp-stickyCartBar"
-            onClick={() => setCartOpen(true)}
+            onClick={openCart}
             aria-label={t.openCart}
           >
             <span className="tp-stickyCartCount">{cartQty}</span>
@@ -814,7 +905,7 @@ export default function TablePage() {
         )}
 
         {closedModalOpen && (
-          <div className="tp-modalOverlay" role="presentation" onClick={() => setClosedModalOpen(false)}>
+          <div className="tp-modalOverlay" role="presentation" onClick={closeClosedModal}>
             <div className="tp-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
               <div className="tp-modalIcon">i</div>
               <h3 className="tp-modalTitle">
@@ -829,7 +920,7 @@ export default function TablePage() {
                         : ""
                     }`}
               </p>
-              <button className="tp-btn tp-btn--checkout" onClick={() => setClosedModalOpen(false)}>
+              <button className="tp-btn tp-btn--checkout" onClick={closeClosedModal}>
                 {t.ok}
               </button>
             </div>
