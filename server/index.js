@@ -110,6 +110,9 @@ function setRoomCookie(res, token, ttlSeconds) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   res.setHeader("Set-Cookie", `${roomCookieName}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ttlSeconds}${secure}`);
 }
+function remainingSessionSeconds(expiresAt, now = new Date()) {
+  return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now.getTime()) / 1000));
+}
 async function createRoomSession(roomId, verified) {
   const rawToken = randomToken(32);
   const ttl = verified ? ROOM_VERIFIED_TTL_SECONDS : ROOM_PENDING_TTL_SECONDS;
@@ -350,7 +353,7 @@ app.post("/api/guest/room-session/bootstrap", rateLimit({ key: "guest-room-boots
     if (existing && !existing.revokedAt) await prisma.roomVerificationSession.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
     const created = await createRoomSession(room.id, false);
     setRoomCookie(res, created.rawToken, created.ttl);
-    res.status(201).json({ status: "verification_required" });
+    res.status(201).json({ status: "verification_required", expiresInSeconds: created.ttl });
   } catch (error) {
     console.error("guest room bootstrap failed", error);
     res.status(500).json({ error: "server error" });
@@ -360,12 +363,14 @@ app.get("/api/guest/room-session", async (req, res) => {
   try {
     const session = await findDbRoomSession(req);
     if (!session) return res.json({ status: "anonymous" });
-    if (session.revokedAt || session.expiresAt <= new Date() || !session.room?.isActive) return res.json({ status: "expired", roomId: session.roomId });
+    const now = new Date();
+    if (session.revokedAt || session.expiresAt <= now || !session.room?.isActive) return res.json({ status: "expired", roomId: session.roomId });
     res.json({
       status: session.verifiedAt ? "verified" : "verification_required",
       roomId: session.roomId,
       room: { id: session.room.id, displayName: session.room.name || `Soba ${session.room.id}` },
       expiresAt: session.expiresAt,
+      expiresInSeconds: remainingSessionSeconds(session.expiresAt, now),
     });
   } catch (error) {
     console.error("guest room session status failed", error);
@@ -388,7 +393,7 @@ app.post("/api/guest/room-session/verify", async (req, res) => {
     const expiresAt = new Date(now.getTime() + ROOM_VERIFIED_TTL_SECONDS * 1000);
     await prisma.roomVerificationSession.update({ where: { id: session.id }, data: { verifiedAt: now, expiresAt } });
     setRoomCookie(res, roomSessionToken(req), ROOM_VERIFIED_TTL_SECONDS);
-    res.json({ status: "verified", roomId: room.id, expiresAt });
+    res.json({ status: "verified", roomId: room.id, expiresAt, expiresInSeconds: ROOM_VERIFIED_TTL_SECONDS });
   } catch (error) {
     console.error("guest room verification failed", error);
     res.status(500).json({ error: "server error" });
@@ -406,7 +411,7 @@ app.post("/api/guest/room-session/reverify", async (req, res) => {
     if (existing && !existing.revokedAt) await prisma.roomVerificationSession.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
     const created = await createRoomSession(room.id, true);
     setRoomCookie(res, created.rawToken, created.ttl);
-    res.status(201).json({ status: "verified", roomId: room.id });
+    res.status(201).json({ status: "verified", roomId: room.id, expiresInSeconds: created.ttl });
   } catch (error) {
     console.error("guest room reverification failed", error);
     res.status(500).json({ error: "server error" });

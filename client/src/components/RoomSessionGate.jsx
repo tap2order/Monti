@@ -1,178 +1,355 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { useParams, useSearchParams } from "react-router-dom";
-import "../css/RoomChoicePage.css";
+import { Camera, CircleHelp, RefreshCw } from "lucide-react";
+import { confirmGuestRoomSession, guestFetch, guestJson } from "../guestSession";
+import { getBilingualCameraText, getGuestVerificationText } from "../guestVerificationText";
+import {
+  CAMERA_CONSTRAINTS,
+  CAMERA_FALLBACK_CONSTRAINTS,
+  cameraErrorKind,
+  cameraGuideKind,
+  queryCameraPermission,
+  stopMediaStream,
+} from "../cameraRecovery";
+import "./RoomSessionGate.css";
 
-function cameraError(error) {
-  if (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-    return "Kamera zahtijeva HTTPS vezu.";
-  }
-  if (error?.name === "NotAllowedError") return "Pristup kameri nije dozvoljen.";
-  if (error?.name === "NotFoundError") return "Kamera nije pronađena.";
-  if (error?.name === "NotReadableError") return "Kamera je zauzeta drugom aplikacijom.";
-  if (error?.name === "OverconstrainedError") return "Odabrana kamera ne podržava tražene postavke.";
-  return "Kameru nije moguće pokrenuti.";
-}
+const BILINGUAL_CAMERA_TEXT = getBilingualCameraText();
 
 export default function RoomSessionGate({ children }) {
   const { tableId } = useParams();
-  const [searchParams] = useSearchParams();
-  const api = import.meta.env.VITE_API_URL || "";
-  const qrToken = searchParams.get("token") || "";
-  const [state, setState] = useState("restoring");
-  const [message, setMessage] = useState("");
-  const [needsReverify, setNeedsReverify] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const locationRef = useRef(location);
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
-  const submittingRef = useRef(false);
+  const submittedRef = useRef(false);
+  const scanActiveRef = useRef(false);
+  const startingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const expiryTimerRef = useRef(null);
+  const [state, setState] = useState("restoring");
+  const [message, setMessage] = useState("");
+  const [canScan, setCanScan] = useState(false);
+  const [reverify, setReverify] = useState(false);
+  const [cameraStartRequired, setCameraStartRequired] = useState(false);
+  const [cameraIssue, setCameraIssue] = useState("");
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [permissionState, setPermissionState] = useState("unknown");
+  const requestedLanguage = new URLSearchParams(location.search).get("lang") || "bs";
+  const language = ["bs", "en", "de", "tr", "ar"].includes(requestedLanguage) ? requestedLanguage : "bs";
+  const text = getGuestVerificationText(language);
 
-  const stopCamera = useCallback(() => {
+  useEffect(() => { locationRef.current = location; }, [location]);
+
+  const stopScanner = useCallback(() => {
+    scanActiveRef.current = false;
     controlsRef.current?.stop();
     controlsRef.current = null;
     const stream = videoRef.current?.srcObject;
-    stream?.getTracks?.().forEach((track) => track.stop());
+    stopMediaStream(stream);
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  const readStatus = useCallback(async () => {
-    const response = await fetch(`${api}/api/guest/room-session`, { credentials: "include" });
-    if (!response.ok) throw new Error("Status sesije nije moguće provjeriti.");
-    const data = await response.json();
-    if (data.status === "verified" && String(data.roomId) === String(tableId)) {
-      setState("verified");
-      setNeedsReverify(false);
-      return "verified";
-    }
-    if (data.status === "verification_required" && String(data.roomId) === String(tableId)) {
-      setState("verification_required");
-      setNeedsReverify(false);
-      return "verification_required";
-    }
-    setNeedsReverify(data.status === "expired" || data.status === "verified");
-    setState("verification_required");
-    return data.status;
-  }, [api, tableId]);
+  const clearExpiryTimer = useCallback(() => {
+    if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
+    expiryTimerRef.current = null;
+  }, []);
 
-  useEffect(() => {
-    let active = true;
-    async function restore() {
-      try {
-        if (qrToken) {
-          const bootstrap = await fetch(`${api}/api/guest/room-session/bootstrap`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roomId: tableId, token: qrToken }),
-          });
-          if (!bootstrap.ok) throw new Error("QR kod sobe nije važeći.");
-          const saved = await readStatus();
-          if (saved === "anonymous") throw new Error("Cookie sesije nije sačuvan. Provjerite postavke browsera.");
-          if (saved === "verified") return;
-          const clean = new URL(window.location.href);
-          clean.searchParams.delete("token");
-          window.history.replaceState({}, "", `${clean.pathname}${clean.search}${clean.hash}`);
-        } else {
-          await readStatus();
-        }
-      } catch (error) {
-        if (active) {
-          setState("verification_required");
-          setNeedsReverify(true);
-          setMessage(error.message === "Status sesije nije moguće provjeriti." ? "Cookie sesije nije sačuvan. Provjerite postavke browsera." : error.message);
-        }
-      }
-    }
-    restore();
-    const lock = () => {
-      stopCamera();
-      sessionStorage.removeItem(`hotel_guest_cart_${tableId}`);
-      setNeedsReverify(true);
+  const scheduleExpiryLock = useCallback((expiresInSeconds) => {
+    clearExpiryTimer();
+    if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0) return;
+    expiryTimerRef.current = setTimeout(() => {
+      stopScanner();
       setState("verification_required");
-      setMessage("Sesija je istekla. Ponovo skenirajte QR kod sobe.");
+      setCanScan(true);
+      setReverify(true);
+      setMessage(BILINGUAL_CAMERA_TEXT.expired);
+      setCameraStartRequired(true);
+    }, expiresInSeconds * 1000);
+  }, [clearExpiryTimer, stopScanner]);
+
+  const restore = useCallback(async ({ expiredMessage = "" } = {}) => {
+    setState("restoring");
+    setMessage(expiredMessage);
+    setCanScan(false);
+    setReverify(false);
+    setCameraStartRequired(false);
+    setCameraIssue("");
+    setShowInstructions(false);
+    clearExpiryTimer();
+    const currentLocation = locationRef.current;
+    const params = new URLSearchParams(currentLocation.search);
+    const token = params.get("token") || params.get("code");
+    try {
+      let payload;
+      if (token) {
+        const response = await guestFetch("/api/guest/room-session/bootstrap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId: tableId, token }),
+        });
+        payload = await guestJson(response);
+        if (!response.ok) throw new Error("bootstrap");
+        const confirmed = await confirmGuestRoomSession();
+        if (!confirmed.response.ok || !["verification_required", "verified"].includes(confirmed.payload?.status)) {
+          throw new Error("cookie_not_persisted");
+        }
+        payload = confirmed.payload;
+        params.delete("token");
+        params.delete("code");
+        navigate({ pathname: currentLocation.pathname, search: params.toString() ? `?${params}` : "" }, { replace: true });
+      } else {
+        const confirmed = await confirmGuestRoomSession();
+        if (!confirmed.response.ok) throw new Error("session_status");
+        payload = confirmed.payload;
+      }
+      if (payload?.status === "verified" && String(payload.roomId) === String(tableId)) {
+        setState("verified");
+        scheduleExpiryLock(payload.expiresInSeconds);
+      } else if (payload?.status === "expired") {
+        setState("verification_required");
+        setMessage(BILINGUAL_CAMERA_TEXT.expired);
+        setCanScan(true);
+        setReverify(true);
+        setCameraStartRequired(true);
+      } else {
+        setState("verification_required");
+        setCanScan(true);
+        setReverify(payload?.status !== "verification_required");
+        setCameraStartRequired(true);
+      }
+    } catch {
+      setState("verification_required");
+      setCanScan(true);
+      setReverify(true);
+      setMessage(BILINGUAL_CAMERA_TEXT.sessionError);
+      setCameraStartRequired(true);
+    }
+  }, [clearExpiryTimer, navigate, scheduleExpiryLock, tableId]);
+
+  useEffect(() => { restore(); }, [restore]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopScanner();
+      clearExpiryTimer();
     };
-    window.addEventListener("room-session-invalid", lock);
-    return () => { active = false; stopCamera(); window.removeEventListener("room-session-invalid", lock); };
-  }, [api, qrToken, tableId, readStatus, stopCamera]);
+  }, [clearExpiryTimer, stopScanner]);
+  useEffect(() => {
+    const onInvalid = (event) => {
+      stopScanner();
+      clearExpiryTimer();
+      sessionStorage.removeItem(`hotel_guest_cart_${tableId}`);
+      setState("verification_required");
+      const expired = event.detail?.code === "ROOM_SESSION_EXPIRED";
+      setCanScan(true);
+      setReverify(true);
+      setCameraStartRequired(true);
+      setCameraIssue("");
+      setMessage(expired ? BILINGUAL_CAMERA_TEXT.expired : BILINGUAL_CAMERA_TEXT.instruction);
+    };
+    window.addEventListener("guest-room-session-invalid", onInvalid);
+    return () => window.removeEventListener("guest-room-session-invalid", onInvalid);
+  }, [clearExpiryTimer, stopScanner, tableId, text.expired, text.instruction]);
 
   const submitScan = useCallback(async (scannedValue) => {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
-    stopCamera();
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    stopScanner();
     setState("verifying");
-    setMessage("");
     try {
-      const endpoint = needsReverify ? "reverify" : "verify";
-      const response = await fetch(`${api}/api/guest/room-session/${endpoint}`, {
+      const response = await guestFetch(reverify ? "/api/guest/room-session/reverify" : "/api/guest/room-session/verify", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(needsReverify ? { roomId: tableId, scannedValue } : { scannedValue }),
+        body: JSON.stringify(reverify ? { roomId: tableId, scannedValue } : { scannedValue }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || "QR kod nije validan za ovu sobu.");
-      if ((await readStatus()) !== "verified") throw new Error("Cookie sesije nije sačuvan. Provjerite postavke browsera.");
-    } catch (error) {
-      setMessage(error.message);
+      const payload = await guestJson(response);
+      if (!response.ok) {
+        setState("verification_required");
+        setCanScan(true);
+        setCameraStartRequired(true);
+        setMessage(payload?.code === "WRONG_ROOM_QR" ? BILINGUAL_CAMERA_TEXT.wrongRoom : BILINGUAL_CAMERA_TEXT.invalidQr);
+        return;
+      }
+      const confirmed = await confirmGuestRoomSession();
+      if (!confirmed.response.ok || confirmed.payload?.status !== "verified" || String(confirmed.payload.roomId) !== String(tableId)) {
+        setState("verification_required");
+        setCanScan(true);
+        setCameraStartRequired(true);
+        setMessage(BILINGUAL_CAMERA_TEXT.cookieError);
+        return;
+      }
+      setState("verified");
+      setMessage(BILINGUAL_CAMERA_TEXT.confirmed);
+      scheduleExpiryLock(confirmed.payload.expiresInSeconds);
+    } catch {
       setState("verification_required");
+      setCanScan(true);
+      setCameraStartRequired(true);
+      setMessage(BILINGUAL_CAMERA_TEXT.invalidQr);
     } finally {
-      submittingRef.current = false;
+      submittedRef.current = false;
     }
-  }, [api, needsReverify, readStatus, stopCamera, tableId]);
+  }, [reverify, scheduleExpiryLock, stopScanner, tableId]);
 
-  const startCamera = async () => {
-    if (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-      setMessage("Kamera zahtijeva HTTPS vezu.");
+  const startScanner = useCallback(async () => {
+    if (scanActiveRef.current || startingRef.current) return;
+    startingRef.current = true;
+    stopScanner();
+    setCameraIssue("");
+    setShowInstructions(false);
+    if (!window.isSecureContext && window.location.hostname !== "localhost") {
+      setState("verification_required");
+      setCameraStartRequired(true);
+      setMessage(BILINGUAL_CAMERA_TEXT.httpsBody);
+      setCameraIssue("https");
+      startingRef.current = false;
       return;
     }
-    setState("requesting_camera");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setState("verification_required");
+      setCameraStartRequired(true);
+      setMessage(BILINGUAL_CAMERA_TEXT.unavailableBody);
+      setCameraIssue("unavailable");
+      startingRef.current = false;
+      return;
+    }
+    submittedRef.current = false;
+    scanActiveRef.current = true;
+    setCameraStartRequired(false);
     setMessage("");
-    const reader = new BrowserQRCodeReader();
+    setState("requesting_camera");
     try {
-      let controls;
+      let stream;
       try {
-        controls = await reader.decodeFromConstraints(
-          { audio: false, video: { facingMode: { ideal: "environment" } } },
-          videoRef.current,
-          (result) => result && submitScan(result.getText())
-        );
+        stream = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
       } catch (error) {
-        if (!["OverconstrainedError", "NotFoundError"].includes(error?.name)) throw error;
-        controls = await reader.decodeFromConstraints(
-          { audio: false, video: true },
-          videoRef.current,
-          (result) => result && submitScan(result.getText())
-        );
+        if (cameraErrorKind(error) !== "overconstrained") throw error;
+        stream = await navigator.mediaDevices.getUserMedia(CAMERA_FALLBACK_CONSTRAINTS);
+      }
+      if (!mountedRef.current || !scanActiveRef.current) {
+        stopMediaStream(stream);
+        return;
+      }
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      const reader = new BrowserQRCodeReader();
+      const controls = await reader.decodeFromStream(
+        stream,
+        videoRef.current,
+        (result) => { if (result) submitScan(result.getText()); }
+      );
+      if (!scanActiveRef.current || submittedRef.current) {
+        controls.stop();
+        return;
       }
       controlsRef.current = controls;
+      setPermissionState("granted");
       setState("scanning");
+      setMessage(BILINGUAL_CAMERA_TEXT.ready);
     } catch (error) {
-      stopCamera();
-      setMessage(cameraError(error));
+      stopScanner();
       setState("verification_required");
+      setCameraStartRequired(true);
+      const issue = cameraErrorKind(error);
+      setCameraIssue(issue);
+      if (issue === "denied") {
+        setPermissionState("denied");
+        setMessage(BILINGUAL_CAMERA_TEXT.blockedBody);
+      } else if (issue === "not_found") {
+        setMessage(BILINGUAL_CAMERA_TEXT.notFoundBody);
+      } else if (issue === "in_use") {
+        setMessage(BILINGUAL_CAMERA_TEXT.inUseBody);
+      } else {
+        setMessage(BILINGUAL_CAMERA_TEXT.unavailableBody);
+      }
+    } finally {
+      startingRef.current = false;
     }
-  };
+  }, [stopScanner, submitScan]);
+
+  useEffect(() => {
+    const refreshPermission = async () => {
+      const next = await queryCameraPermission();
+      if (!mountedRef.current) return;
+      setPermissionState(next);
+      if (next === "granted" && cameraIssue === "denied") {
+        setCameraIssue("");
+        setMessage("");
+        setCameraStartRequired(true);
+      }
+    };
+    const onVisibility = () => { if (document.visibilityState === "visible") refreshPermission(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", refreshPermission);
+    window.addEventListener("focus", refreshPermission);
+    refreshPermission();
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", refreshPermission);
+      window.removeEventListener("focus", refreshPermission);
+    };
+  }, [cameraIssue]);
 
   if (state === "verified") return children;
-
+  const scanning = state === "scanning" || state === "requesting_camera" || state === "verifying";
+  const waiting = state === "restoring" || state === "requesting_camera" || state === "verifying";
+  const showScanner = canScan || scanning;
+  const recovery = BILINGUAL_CAMERA_TEXT;
+  const guide = recovery.guides[cameraGuideKind(navigator.userAgent)] || recovery.guides.generic;
+  const issueTitle = cameraIssue === "denied" ? recovery.blockedTitle
+    : cameraIssue === "not_found" ? recovery.notFoundTitle
+    : cameraIssue === "in_use" ? recovery.inUseTitle
+    : cameraIssue === "https" ? recovery.httpsTitle
+    : recovery.unavailableTitle;
   return (
-    <div className="choicePage">
-      <div className="choiceCard">
-        <p className="choiceEyebrow">ROOM SERVICE</p>
-        <h1 className="choiceTitle">
-          {state === "restoring" ? "Provjera sesije…" : state === "verifying" ? "Provjera QR koda…" : "Potvrdite sobu"}
-        </h1>
-        <p className="choiceSubtitle">
-          {message || "Ponovo skenirajte fizički QR kod u sobi da biste pristupili Room Serviceu."}
-        </p>
-        <video ref={videoRef} muted playsInline style={{ width: "100%", borderRadius: 16, display: ["requesting_camera", "scanning"].includes(state) ? "block" : "none" }} />
-        {!["restoring", "verifying", "scanning"].includes(state) && (
-          <button type="button" className="choiceOption" onClick={startCamera}>
-            <span className="choiceOptionLabel">Pokreni kameru</span>
-            <span className="choiceOptionText">Skenirajte QR kod ove sobe.</span>
-          </button>
-        )}
-        {state === "scanning" && <p className="choiceSubtitle">Usmjerite kameru prema QR kodu…</p>}
-      </div>
-    </div>
+    <main className="guestVerificationPage" data-camera-permission={permissionState}>
+      <section className={`guestVerificationCard${scanning ? " guestVerificationCard--scanning" : ""}`} aria-live="polite" dir={language === "ar" ? "rtl" : "ltr"}>
+        <header className="guestVerificationHeader">
+          <p className="guestVerificationEyebrow">{text.brand}</p>
+          <h1>{recovery.title}</h1>
+          <p className="guestVerificationIntro">{recovery.instruction}</p>
+        </header>
+
+        {message && !cameraIssue && <p className="guestVerificationAlert" role="alert">{message}</p>}
+
+        {state === "restoring" && <div className="guestVerificationLoading" role="status">
+          <span className="guestVerificationSpinner" aria-hidden="true" />
+          <span>{recovery.restoring}</span>
+        </div>}
+
+        {cameraIssue && <section className="guestCameraRecovery" aria-labelledby="camera-recovery-title">
+          <Camera size={34} aria-hidden="true" />
+          <h2 id="camera-recovery-title">{issueTitle}</h2>
+          <p>{message}</p>
+          {cameraIssue === "denied" && <button className="guestVerificationButton guestVerificationButton--secondary" type="button" onClick={() => setShowInstructions((value) => !value)}>
+            <CircleHelp size={18} aria-hidden="true" />{showInstructions ? recovery.hideInstructions : recovery.showInstructions}
+          </button>}
+          {showInstructions && <ol className="guestCameraInstructions">{guide.map((step) => <li key={step}>{step}</li>)}</ol>}
+          <div className="guestCameraRecoveryActions">
+            <button className="guestVerificationButton guestVerificationButton--primary" type="button" disabled={state === "requesting_camera"} onClick={startScanner}>
+              <RefreshCw size={18} aria-hidden="true" />{recovery.retry}
+            </button>
+          </div>
+        </section>}
+
+        {!cameraIssue && showScanner && <div className="guestScannerBlock">
+          <div className={`guestScannerFrame${state === "scanning" ? " guestScannerFrame--active" : ""}`}>
+            <video ref={videoRef} playsInline muted className="guestScannerVideo" />
+            <span className="guestScannerCorner guestScannerCorner--topLeft" aria-hidden="true" />
+            <span className="guestScannerCorner guestScannerCorner--topRight" aria-hidden="true" />
+            <span className="guestScannerCorner guestScannerCorner--bottomLeft" aria-hidden="true" />
+            <span className="guestScannerCorner guestScannerCorner--bottomRight" aria-hidden="true" />
+            {state === "scanning" && <span className="guestScannerLine" aria-hidden="true" />}
+            {waiting && <span className="guestScannerStatus"><span className="guestVerificationSpinner" aria-hidden="true" /></span>}
+            {!scanning && cameraStartRequired && <button className="guestScannerStartButton" type="button" onClick={startScanner}><Camera size={19} aria-hidden="true" /><span>{recovery.enableAndScan}</span></button>}
+            {!scanning && !cameraStartRequired && <span className="guestScannerStatus"><span className="guestVerificationSpinner" aria-hidden="true" /></span>}
+          </div>
+          <p className="guestScannerInstruction">{state === "requesting_camera" ? recovery.starting : state === "verifying" ? recovery.verifying : state === "scanning" ? recovery.ready : recovery.instruction}</p>
+          {scanning && state !== "verifying" && <button className="guestVerificationButton guestVerificationButton--secondary" type="button" onClick={() => { stopScanner(); setState("verification_required"); setCameraStartRequired(true); }}>{recovery.cancel}</button>}
+        </div>}
+      </section>
+    </main>
   );
 }

@@ -1,0 +1,96 @@
+.guestVerificationPage {
+  --gv-bg: #03060d;
+  --gv-card: rgba(13, 18, 28, 0.82);
+  --gv-card-deep: rgba(6, 10, 17, 0.9);
+  --gv-text: #f8fafc;
+  --gv-muted: rgba(255, 255, 255, 0.68);
+  --gv-gold: #d4a63a;
+  --gv-gold-light: #efd37a;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  color: var(--gv-text);
+  background:
+    radial-gradient(760px 460px at 50% -6%, rgba(212, 166, 58, 0.14), transparent 62%),
+    linear-gradient(180deg, rgba(2, 5, 11, 0.74), rgba(2, 5, 11, 0.94)),
+    url("/images/bg.jpg") center / cover no-repeat,
+    var(--gv-bg);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-overflow-scrolling: touch;
+}
+
+.guestVerificationCard {
+  width: min(100%, 440px);
+  margin: auto;
+  padding: 26px;
+  border: 1px solid rgba(212, 166, 58, 0.32);
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--gv-card), var(--gv-card-deep));
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.54), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(22px) saturate(118%);
+  -webkit-backdrop-filter: blur(22px) saturate(118%);
+  text-align: center;
+}
+
+.guestVerificationHeader { display: grid; justify-items: center; }
+.guestVerificationIcon, .guestVerificationQrIcon {
+  display: grid;
+  place-items: center;
+  color: var(--gv-gold-light);
+  border: 1px solid rgba(212, 166, 58, 0.36);
+  background: rgba(212, 166, 58, 0.11);
+  border-radius: 999px;
+}
+.guestVerificationIcon { width: 52px; height: 52px; margin-bottom: 16px; }
+.guestVerificationQrIcon { width: 68px; height: 68px; margin: 4px auto 18px; }
+.guestVerificationEyebrow { margin: 0 0 8px; color: var(--gv-gold); font-size: 10px; font-weight: 800; letter-spacing: 0.2em; }
+.guestVerificationHeader h1 { margin: 0; color: #fffaf0; font-family: "Manrope", "Inter", sans-serif; font-size: clamp(28px, 7vw, 34px); line-height: 1.08; letter-spacing: -0.035em; }
+.guestVerificationIntro { max-width: 330px; margin: 11px auto 0; color: var(--gv-muted); font-size: 14px; line-height: 1.55; }
+
+.guestVerificationAlert { margin: 20px 0 0; padding: 11px 13px; border: 1px solid rgba(224, 139, 112, 0.35); border-radius: 14px; background: rgba(154, 61, 46, 0.17); color: #ffd8cb; font-size: 13px; line-height: 1.45; text-align: left; }
+.guestVerificationLoading { min-height: 112px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: var(--gv-muted); font-size: 14px; }
+.guestVerificationSpinner { width: 18px; height: 18px; flex: 0 0 auto; display: inline-block; border: 2px solid rgba(255, 255, 255, 0.22); border-top-color: var(--gv-gold-light); border-radius: 50%; animation: guestVerificationSpin 750ms linear infinite; }
+
+.guestVerificationActions { margin-top: 23px; }
+.guestVerificationButton { width: 100%; min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border-radius: 16px; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; transition: transform 160ms ease, filter 160ms ease, border-color 160ms ease, background 160ms ease; }
+.guestVerificationButton--primary { border: 1px solid rgba(255, 237, 166, 0.76); background: linear-gradient(135deg, var(--gv-gold), #e2c45f); color: #171107; box-shadow: 0 12px 26px rgba(212, 166, 58, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.42); }
+.guestVerificationButton--secondary { margin-top: 14px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.045); color: #fffaf0; }
+.guestVerificationButton:active { transform: scale(0.985); }
+.guestVerificationButton:focus-visible, .guestVerificationRetry:focus-visible { outline: 3px solid #fff3b3; outline-offset: 3px; }
+.guestVerificationRetry { margin-top: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; color: var(--gv-gold-light); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.guestVerificationPrivacy { margin: 15px 0 0; color: rgba(255, 255, 255, 0.5); font-size: 12px; line-height: 1.45; }
+
+.guestScannerBlock { margin-top: 21px; }
+.guestScannerFrame { position: relative; width: 100%; max-width: 344px; margin: 0 auto; aspect-ratio: 1 / 1; overflow: hidden; border: 1px solid rgba(212, 166, 58, 0.28); border-radius: 20px; background: #080b11; box-shadow: 0 16px 34px rgba(0, 0, 0, 0.38); }
+.guestScannerVideo { display: block; width: 100%; height: 100%; object-fit: cover; background: #080b11; }
+.guestScannerStartButton { position: absolute; left: 50%; top: 50%; z-index: 2; min-height: 50px; min-width: min(230px, calc(100% - 36px)); display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 18px; border: 1px solid rgba(255, 237, 166, 0.76); border-radius: 15px; background: linear-gradient(135deg, var(--gv-gold), #e2c45f); color: #171107; font: inherit; font-size: 14px; font-weight: 800; transform: translate(-50%, -50%); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.42); cursor: pointer; }
+.guestScannerStartButton:focus-visible { outline: 3px solid #fff3b3; outline-offset: 3px; }
+.guestScannerCorner { position: absolute; width: 32px; height: 32px; border-color: var(--gv-gold-light); border-style: solid; filter: drop-shadow(0 0 7px rgba(212, 166, 58, 0.32)); }
+.guestScannerCorner--topLeft { top: 14px; left: 14px; border-width: 3px 0 0 3px; border-radius: 7px 0 0; }
+.guestScannerCorner--topRight { top: 14px; right: 14px; border-width: 3px 3px 0 0; border-radius: 0 7px 0 0; }
+.guestScannerCorner--bottomLeft { bottom: 14px; left: 14px; border-width: 0 0 3px 3px; border-radius: 0 0 0 7px; }
+.guestScannerCorner--bottomRight { right: 14px; bottom: 14px; border-width: 0 3px 3px 0; border-radius: 0 0 7px; }
+.guestScannerLine { position: absolute; right: 28px; left: 28px; top: 50%; height: 1px; background: var(--gv-gold-light); box-shadow: 0 0 13px 3px rgba(212, 166, 58, 0.7); animation: guestVerificationScan 2.2s ease-in-out infinite; }
+.guestScannerStatus { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(3, 6, 12, 0.36); }
+.guestScannerInstruction { margin: 14px 0 0; color: var(--gv-muted); font-size: 14px; }
+.guestCameraRecovery { display: grid; justify-items: center; gap: 12px; margin-top: 20px; padding: 20px 16px; border: 1px solid rgba(224, 139, 112, 0.42); border-radius: 18px; background: rgba(71, 25, 22, 0.28); }
+.guestCameraRecovery > svg { color: #ffd08a; }
+.guestCameraRecovery h2 { margin: 0; color: #fffaf0; font-size: 21px; line-height: 1.2; }
+.guestCameraRecovery p { margin: 0; color: #ffe1d6; font-size: 14px; line-height: 1.55; }
+.guestCameraRecoveryActions { width: 100%; display: grid; gap: 10px; margin-top: 4px; }
+.guestCameraRecovery .guestVerificationButton--secondary { margin-top: 0; }
+.guestCameraInstructions { width: 100%; margin: 2px 0 4px; padding: 14px 14px 14px 34px; border-radius: 13px; background: rgba(3, 6, 12, 0.48); color: #f8fafc; font-size: 13px; line-height: 1.55; text-align: left; }
+.guestCameraInstructions li + li { margin-top: 7px; }
+.guestVerificationButton:disabled { cursor: wait; opacity: 0.58; transform: none; }
+
+@keyframes guestVerificationSpin { to { transform: rotate(360deg); } }
+@keyframes guestVerificationScan { 0%, 100% { transform: translateY(-115px); opacity: 0.45; } 50% { transform: translateY(115px); opacity: 1; } }
+
+@media (hover: hover) and (pointer: fine) { .guestVerificationButton--primary:hover { filter: brightness(1.07); transform: translateY(-1px); } .guestVerificationButton--secondary:hover { border-color: rgba(212, 166, 58, 0.42); background: rgba(212, 166, 58, 0.08); } .guestVerificationRetry:hover { color: #fff1ae; } }
+@media (max-width: 360px) { .guestVerificationPage { padding-right: 12px; padding-left: 12px; } .guestVerificationCard { padding: 22px 18px; border-radius: 21px; } .guestScannerFrame { max-width: min(100%, 300px); } .guestCameraRecovery { padding: 18px 13px; } }
+@media (max-height: 650px) { .guestVerificationPage { place-items: start center; } .guestVerificationCard { margin: 12px auto; padding-top: 22px; padding-bottom: 22px; } .guestVerificationIcon { width: 44px; height: 44px; margin-bottom: 11px; } .guestScannerFrame { max-width: min(100%, 280px); } .guestVerificationQrIcon { width: 54px; height: 54px; margin-bottom: 13px; } }
+@media (prefers-reduced-motion: reduce) { .guestVerificationSpinner, .guestScannerLine { animation: none; } .guestVerificationButton { transition-duration: 1ms; } }

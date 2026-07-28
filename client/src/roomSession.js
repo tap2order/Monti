@@ -10,5 +10,5 @@ export function isRoomSessionError(code) {
 }
 
 export function lockRoomSession(code = "ROOM_SESSION_EXPIRED") {
-  window.dispatchEvent(new CustomEvent("room-session-invalid", { detail: { code } }));
+  window.dispatchEvent(new CustomEvent("guest-room-session-invalid", { detail: { code } }));
 }
