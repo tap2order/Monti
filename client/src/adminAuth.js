@@ -6,8 +6,12 @@ export function setAdminAuth(token) {
 }
 
 export function getAdminAuth() {
-  const token = sessionStorage.getItem(KEY) || "";
+  const token = getAdminToken();
   return token ? `Bearer ${token}` : "";
+}
+
+export function getAdminToken() {
+  return sessionStorage.getItem(KEY) || "";
 }
 
 export function clearAdminAuth() {

@@ -1,18 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
 import "../css/WaiterPage.css";
-import { clearStaffToken, getStaffToken, setStaffToken, staffHeaders } from "../staffAuth";
+import { clearAdminAuth, getAdminAuth, getAdminToken } from "../adminAuth";
 
 function responseError(response, fallback) {
   return response.json().then((data) => data?.error || fallback).catch(() => fallback);
 }
 
 export default function WaiterPage() {
+  const navigate = useNavigate();
   const api = import.meta.env.VITE_API_URL || "";
-  const [token, setToken] = useState(getStaffToken());
-  const [pin, setPin] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [loggingIn, setLoggingIn] = useState(false);
+  const token = getAdminToken();
   const [orders, setOrders] = useState([]);
   const [calls, setCalls] = useState([]);
   const [claimedOrders, setClaimedOrders] = useState([]);
@@ -21,41 +20,19 @@ export default function WaiterPage() {
   const [busyId, setBusyId] = useState("");
   const socketRef = useRef(null);
 
-  async function login(event) {
-    event.preventDefault();
-    setLoggingIn(true);
-    setLoginError("");
-    try {
-      const response = await fetch(`${api}/auth/staff/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
-      if (!response.ok) throw new Error(await responseError(response, "Prijava nije uspjela."));
-      const data = await response.json();
-      setStaffToken(data.token);
-      setToken(data.token);
-      setPin("");
-    } catch (err) {
-      setLoginError(err.message || "Prijava nije uspjela.");
-    } finally {
-      setLoggingIn(false);
-    }
-  }
-
   function logout() {
-    clearStaffToken();
-    setToken("");
+    clearAdminAuth();
     setOrders([]);
     setCalls([]);
     setClaimedOrders([]);
+    navigate("/admin", { replace: true });
   }
 
   async function loadDashboard() {
     setLoading(true);
     setError("");
     try {
-      const headers = staffHeaders();
+      const headers = { Authorization: getAdminAuth() };
       const [openOrders, openCalls, claimed] = await Promise.all([
         fetch(`${api}/orders/unclaimed`, { headers }),
         fetch(`${api}/calls/open`, { headers }),
@@ -74,7 +51,10 @@ export default function WaiterPage() {
   }
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      navigate("/admin", { replace: true });
+      return;
+    }
     loadDashboard();
     const socket = io(api, { transports: ["websocket"], auth: { token } });
     socketRef.current = socket;
@@ -90,13 +70,13 @@ export default function WaiterPage() {
     return () => socket.disconnect();
   // The authenticated token is the lifecycle boundary for this socket.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, token]);
+  }, [api, navigate, token]);
 
   async function action(path, method, id) {
     setBusyId(id);
     setError("");
     try {
-      const response = await fetch(`${api}${path}`, { method, headers: staffHeaders() });
+      const response = await fetch(`${api}${path}`, { method, headers: { Authorization: getAdminAuth() } });
       if (response.status === 401) return logout();
       if (!response.ok) throw new Error(await responseError(response, "Akcija nije uspjela."));
       await loadDashboard();
@@ -107,9 +87,7 @@ export default function WaiterPage() {
     }
   }
 
-  if (!token) {
-    return <main className="wp-page"><section className="wp-shell" style={{ maxWidth: 460 }}><h1 className="wp-title">Prijava osoblja</h1><p className="wp-meta">Unesite univerzalni PIN osoblja.</p><form onSubmit={login} className="wp-section"><label className="wp-meta" htmlFor="staff-pin">PIN</label><input id="staff-pin" className="tp-input" type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(event) => setPin(event.target.value)} required /><button className="wp-btn wp-btn--primary" type="submit" disabled={loggingIn}>{loggingIn ? "Prijava..." : "Prijavi se"}</button>{loginError && <div className="wp-alert wp-alert--error">{loginError}</div>}</form></section></main>;
-  }
+  if (!token) return null;
 
   const card = (order, claimed = false) => <article key={order.id} className="wp-card"><div className="wp-cardInner"><div className="wp-cardTop"><div><div className="wp-cardTitle">Soba {order.tableId}</div><div className="wp-itemsCount">{order.items.length} stavki</div></div><div className="wp-cardBtns">{claimed ? <><button disabled={busyId === order.id} onClick={() => action(`/orders/${order.id}/complete`, "POST", order.id)} className="wp-btn wp-btn--success">Završeno</button><button disabled={busyId === order.id} onClick={() => action(`/orders/${order.id}/unclaim`, "POST", order.id)} className="wp-btn wp-btn--danger">Vrati</button></> : <button disabled={busyId === order.id} onClick={() => action(`/orders/${order.id}/claim`, "PATCH", order.id)} className="wp-btn wp-btn--primary">Preuzmi</button>}</div></div><div className="wp-items">{order.items.map((item) => <div key={item.id} className="wp-itemRow"><div><div className="wp-itemName">{item.name} × {item.qty}</div>{item.note && <div className="wp-note">{item.note}</div>}</div><div className="wp-itemPrice">{(Number(item.price) * item.qty).toFixed(2)} KM</div></div>)}</div></div></article>;
 
