@@ -1,11 +1,13 @@
 const KEY = "admin_auth";
 
-export function setAdminAuth(authHeader) {
-  sessionStorage.setItem(KEY, authHeader);
+export function setAdminAuth(token) {
+  if (token) sessionStorage.setItem(KEY, token);
+  else sessionStorage.removeItem(KEY);
 }
 
 export function getAdminAuth() {
-  return sessionStorage.getItem(KEY) || "";
+  const token = sessionStorage.getItem(KEY) || "";
+  return token ? `Bearer ${token}` : "";
 }
 
 export function clearAdminAuth() {
@@ -13,17 +15,12 @@ export function clearAdminAuth() {
 }
 
 export function isAdminLoggedIn() {
-  return !!getAdminAuth();
+  return Boolean(getAdminAuth());
 }
 
 export function adminFetch(url, options = {}) {
-  const auth = getAdminAuth();
-
   return fetch(url, {
     ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: auth,
-    },
+    headers: { ...(options.headers || {}), Authorization: getAdminAuth() },
   });
 }

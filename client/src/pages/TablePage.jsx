@@ -14,6 +14,7 @@ export default function TablePage() {
   // cart: { [itemId]: { itemId, name, price, qty, note } }
   const [cart, setCart] = useState({});
   const [placing, setPlacing] = useState(false);
+  const [calling, setCalling] = useState("");
   const [placedMsg, setPlacedMsg] = useState("");
   const [callMsg, setCallMsg] = useState("");
   const [orderPopupOpen, setOrderPopupOpen] = useState(false);
@@ -425,7 +426,10 @@ export default function TablePage() {
 
       const res = await fetch(`${api}/orders`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify(body),
       });
 
@@ -440,19 +444,21 @@ export default function TablePage() {
       const params = new URLSearchParams(searchParams);
       params.delete("category");
       setSearchParams(params);
-    } catch (e) {
-      setErr(e.message);
+    } catch {
+      setErr(t.error);
     } finally {
       setPlacing(false);
     }
   };
 
   const callWaiter = async () => {
+    if (calling) return;
     setErr("");
     setCallMsg("");
     setPlacedMsg("");
 
     try {
+      setCalling("waiter");
       const body = { tableId, type: "waiter" };
       if (token) body.token = token;
 
@@ -467,32 +473,10 @@ export default function TablePage() {
 
       setCallMsg(t.staffCalled);
       setStaffPopupOpen(true);
-    } catch (e) {
-      setErr(e.message);
-    }
-  };
-
-  const requestBill = async () => {
-    setErr("");
-    setCallMsg("");
-    setPlacedMsg("");
-
-    try {
-      const body = { tableId, type: "bill" };
-      if (token) body.token = token;
-
-      const res = await fetch(`${api}/calls`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const text = await res.text();
-      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
-
-      setCallMsg(t.billRequested);
-    } catch (e) {
-      setErr(e.message);
+    } catch {
+      setErr(t.error);
+    } finally {
+      setCalling("");
     }
   };
 
@@ -505,7 +489,7 @@ export default function TablePage() {
   };
 
   return (
-    <div className="tp-page">
+    <div className="tp-page" dir={langCode === "ar" ? "rtl" : "ltr"}>
       <div className="tp-ambient" aria-hidden="true" />
       <div className="tp-shell">
         <button
@@ -528,8 +512,8 @@ export default function TablePage() {
           </div>
 
           <div className="tp-headerActions tp-headerActions--vertical">
-            <button onClick={callWaiter} className="tp-btn tp-btn--secondary">
-              {t.callStaff}
+            <button disabled={Boolean(calling)} onClick={callWaiter} className="tp-btn tp-btn--secondary">
+              {calling === "waiter" ? t.sending : t.callStaff}
             </button>
 
             {/* Language is selected only once on RoomLanguagePage */}
@@ -646,8 +630,8 @@ export default function TablePage() {
         </div>
 
         {cartOpen && (
-          <div className="tp-drawerOverlay" onClick={() => setCartOpen(false)}>
-            <div className="tp-drawer" onClick={(e) => e.stopPropagation()}>
+          <div className="tp-drawerOverlay" role="presentation" onClick={() => setCartOpen(false)}>
+            <div className="tp-drawer" role="dialog" aria-modal="true" aria-label={t.cart} onClick={(e) => e.stopPropagation()}>
               <div className="tp-drawerHeader">
                 <div>
                   <div className="tp-kicker">{t.yourOrder}</div>
@@ -760,9 +744,10 @@ export default function TablePage() {
         {orderPopupOpen && (
           <div
             className="tp-modalOverlay"
+            role="presentation"
             onClick={() => setOrderPopupOpen(false)}
           >
-            <div className="tp-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tp-modal" role="dialog" aria-modal="true" aria-label={t.orderSent} onClick={(e) => e.stopPropagation()}>
               <div className="tp-modalIcon">✓</div>
               <h3 className="tp-modalTitle">{t.orderSent}</h3>
               <p className="tp-modalText">{placedMsg}</p>
@@ -780,9 +765,10 @@ export default function TablePage() {
         {staffPopupOpen && (
           <div
             className="tp-modalOverlay"
+            role="presentation"
             onClick={() => setStaffPopupOpen(false)}
           >
-            <div className="tp-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tp-modal" role="dialog" aria-modal="true" aria-label={t.staffNotified} onClick={(e) => e.stopPropagation()}>
               <div className="tp-modalIcon">✓</div>
               <h3 className="tp-modalTitle">{t.staffNotified}</h3>
               <p className="tp-modalText">{callMsg}</p>

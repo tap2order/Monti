@@ -9,996 +9,383 @@ require("dotenv").config();
 
 const app = express();
 const prisma = new PrismaClient();
-
+const PORT = Number(process.env.PORT || 4000);
 const PUBLIC_CLIENT_URL = process.env.PUBLIC_CLIENT_URL || "https://demo.tap2order.ba";
-
 const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASS = process.env.ADMIN_PASS;
+const STAFF_PIN = process.env.STAFF_PIN;
+const AUTH_SECRET = process.env.AUTH_SECRET;
 
-if (!ADMIN_USER || !ADMIN_PASS) {
-  console.error("Missing required ADMIN_USER or ADMIN_PASS environment variables.");
+if (!ADMIN_USER || !ADMIN_PASS || !STAFF_PIN || !AUTH_SECRET) {
+  console.error("Missing ADMIN_USER, ADMIN_PASS, STAFF_PIN or AUTH_SECRET environment variables.");
   process.exit(1);
 }
 
-const allowedOrigins = [
+const allowedOrigins = [...new Set([
   PUBLIC_CLIENT_URL,
   "http://localhost:5173",
-  "http://demo.tap2order.ba",
   "https://demo.tap2order.ba",
-];
+])];
+const AUTH_TTL_SECONDS = 8 * 60 * 60;
+const rateBuckets = new Map();
 
-/* ---------- Helpers ---------- */
 function randomToken(len = 18) {
   return crypto.randomBytes(len).toString("base64url");
 }
 
-/* ---------- Middleware ---------- */
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-  })
-);
+function safeEqual(left, right) {
+  const a = Buffer.from(String(left));
+  const b = Buffer.from(String(right));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
-app.use(express.json({ limit: "6mb" }));
+function signToken(role) {
+  const payload = Buffer.from(JSON.stringify({ role, exp: Math.floor(Date.now() / 1000) + AUTH_TTL_SECONDS })).toString("base64url");
+  const signature = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
 
+function getTokenRole(token) {
+  if (!token || typeof token !== "string") return null;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
+  if (!safeEqual(signature, expected)) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!decoded || !["admin", "staff"].includes(decoded.role) || decoded.exp <= Math.floor(Date.now() / 1000)) return null;
+    return decoded.role;
+  } catch {
+    return null;
+  }
+}
 
+function bearerRole(req) {
+  const header = req.headers.authorization || "";
+  return header.startsWith("Bearer ") ? getTokenRole(header.slice(7)) : null;
+}
 
+function rateLimit({ windowMs, max, key = "default" }) {
+  return (req, res, next) => {
+    const now = Date.now();
+    const bucketKey = `${key}:${req.ip}`;
+    const current = rateBuckets.get(bucketKey);
+    const bucket = !current || current.resetAt <= now ? { count: 0, resetAt: now + windowMs } : current;
+    bucket.count += 1;
+    rateBuckets.set(bucketKey, bucket);
+    if (bucket.count > max) {
+      res.setHeader("Retry-After", Math.ceil((bucket.resetAt - now) / 1000));
+      return res.status(429).json({ error: "Too many requests. Please try again later." });
+    }
+    next();
+  };
+}
+
+function requireAdmin(req, res, next) {
+  if (bearerRole(req) !== "admin") return res.status(401).json({ error: "admin auth required" });
+  req.auth = { role: "admin" };
+  next();
+}
+
+function requireStaffOrAdminAuth(req, res, next) {
+  const role = bearerRole(req);
+  if (!role || !["staff", "admin"].includes(role)) return res.status(401).json({ error: "staff auth required" });
+  req.auth = { role };
+  next();
+}
 
 async function requireValidTable(req, res, next) {
   try {
     const tableId = String(req.body.tableId || req.params.tableId || "");
     const token = String(req.body.token || req.query.token || "");
-
-    if (!tableId) return res.status(400).json({ error: "tableId is required" });
-    if (!token) return res.status(401).json({ error: "token is required" });
-
+    if (!tableId || !token) return res.status(401).json({ error: "valid table credentials required" });
     const table = await prisma.table.findUnique({ where: { id: tableId } });
-    if (!table || !table.isActive) return res.status(404).json({ error: "table not found" });
-    if (table.token !== token) return res.status(403).json({ error: "invalid token" });
-
+    if (!table || !table.isActive || !safeEqual(table.token, token)) return res.status(403).json({ error: "invalid table credentials" });
     req.table = table;
     next();
-  } catch (e) {
-    console.error(e);
+  } catch (error) {
+    console.error("table authentication failed", error);
     res.status(500).json({ error: "server error" });
   }
 }
 
-function requireAdmin(req, res, next) {
-  const user = ADMIN_USER;
-  const pass = ADMIN_PASS;
+function text(value, { required = false, max = 120 } = {}) {
+  if (value === undefined || value === null) return required ? null : undefined;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if ((required && !trimmed) || trimmed.length > max) return null;
+  return trimmed;
+}
 
-  const h = req.headers.authorization || "";
-  if (!h.startsWith("Basic ")) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="Admin"');
-    return res.status(401).json({ error: "admin auth required" });
-  }
+function optionalTranslation(value) {
+  const result = text(value, { max: 120 });
+  return result === undefined ? undefined : result || null;
+}
 
-  const base64 = h.slice("Basic ".length);
-  let decoded = "";
+function parsePrice(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 && number <= 100000 ? number : null;
+}
+
+function parseLimit(value, fallback = 100, max = 250) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
+}
+
+function validIdempotencyKey(value) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{16,128}$/.test(value) ? value : null;
+}
+
+function validImageSource(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (typeof value !== "string" || value.length > 750 * 1024) return null;
+  if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/i.test(value)) return value;
   try {
-    decoded = Buffer.from(base64, "base64").toString("utf8");
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
   } catch {
-    return res.status(401).json({ error: "invalid auth" });
+    return null;
   }
+}
 
-  const [u, p] = decoded.split(":");
-  if (u !== user || p !== pass) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="Admin"');
-    return res.status(401).json({ error: "invalid admin credentials" });
-  }
-
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   next();
-}
-
-function getRequestWaiterId(req) {
-  const value = req.headers["x-waiter-id"];
-  const waiterId = Number(value);
-  return Number.isInteger(waiterId) ? waiterId : null;
-}
-
-async function requireStaffOrAdminAuth(req, res, next) {
-  const h = req.headers.authorization || "";
-
-  if (h.startsWith("Basic ")) {
-    const base64 = h.slice("Basic ".length);
-    let decoded = "";
-    try {
-      decoded = Buffer.from(base64, "base64").toString("utf8");
-    } catch {
-      return res.status(401).json({ error: "invalid auth" });
-    }
-
-    const [u, p] = decoded.split(":");
-    if (u === ADMIN_USER && p === ADMIN_PASS) {
-      req.staffAuth = { type: "admin" };
-      return next();
-    }
-
-    return res.status(401).json({ error: "invalid admin credentials" });
-  }
-
-  const waiterId = getRequestWaiterId(req);
-  if (!waiterId) {
-    return res.status(401).json({ error: "staff auth required" });
-  }
-
-  try {
-    const waiter = await prisma.waiter.findUnique({
-      where: { id: waiterId },
-      select: { id: true, isActive: true },
-    });
-
-    if (!waiter || !waiter.isActive) {
-      return res.status(403).json({ error: "staff access forbidden" });
-    }
-
-    req.staffAuth = { type: "waiter", waiterId };
-    next();
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-}
-
-function requireCallManagerAuth(req, res, next) {
-  requireStaffOrAdminAuth(req, res, () => {
-    req.callManager = req.staffAuth;
-    next();
-  });
-}
-
-function requireMatchingWaiterOrAdmin(req, res, waiterId) {
-  if (req.staffAuth?.type === "waiter" && req.staffAuth.waiterId !== waiterId) {
-    res.status(403).json({ error: "staff access forbidden" });
-    return false;
-  }
-
-  return true;
-}
-
-/* ---------- HTTP server + Socket.IO ---------- */
-const PORT = process.env.PORT || 4000;
-const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST", "PATCH", "DELETE"],
-    credentials: true,
+});
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error("Not allowed by CORS"));
   },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+}));
+app.use(express.json({ limit: "1mb" }));
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: allowedOrigins, methods: ["GET", "POST"], allowedHeaders: ["Authorization"] },
+  maxHttpBufferSize: 100_000,
 });
 
+io.use((socket, next) => {
+  const role = getTokenRole(socket.handshake.auth?.token);
+  if (!role || !["staff", "admin"].includes(role)) return next(new Error("unauthorized"));
+  socket.data.role = role;
+  next();
+});
 io.on("connection", (socket) => {
-  console.log("Socket connected:", socket.id);
-  socket.on("disconnect", () => console.log("Socket disconnected:", socket.id));
+  socket.join("staff");
 });
 
-/* ---------- Health + Menu (DB) ---------- */
 app.get("/health", (req, res) => res.json({ status: "ok" }));
+app.post("/auth/admin/login", rateLimit({ key: "admin-login", windowMs: 15 * 60_000, max: 8 }), (req, res) => {
+  const username = text(req.body?.username, { required: true, max: 128 });
+  const password = text(req.body?.password, { required: true, max: 256 });
+  if (!username || !password || !safeEqual(username, ADMIN_USER) || !safeEqual(password, ADMIN_PASS)) return res.status(401).json({ error: "invalid credentials" });
+  res.json({ token: signToken("admin"), expiresIn: AUTH_TTL_SECONDS });
+});
+app.post("/auth/staff/login", rateLimit({ key: "staff-login", windowMs: 15 * 60_000, max: 10 }), (req, res) => {
+  const pin = text(req.body?.pin, { required: true, max: 128 });
+  if (!pin || !safeEqual(pin, STAFF_PIN)) return res.status(401).json({ error: "invalid credentials" });
+  res.json({ token: signToken("staff"), expiresIn: AUTH_TTL_SECONDS });
+});
 
 app.get("/menu", async (req, res) => {
   try {
-    const menu = await prisma.menuCategory.findMany({
-      orderBy: { name: "asc" },
-      include: { items: { orderBy: { name: "asc" } } },
-    });
+    const menu = await prisma.menuCategory.findMany({ orderBy: { name: "asc" }, include: { items: { orderBy: { name: "asc" } } } });
+    res.setHeader("Cache-Control", "public, max-age=60");
     res.json(menu);
-  } catch (e) {
-    console.error("GET /menu failed:", e);
+  } catch (error) {
+    console.error("GET /menu failed", error);
     res.status(500).json({ error: "Failed to load menu" });
   }
 });
 
-// ✅ Create Menu Category
 app.post("/menu-category", requireAdmin, async (req, res) => {
   try {
-    const name = String(req.body?.name || "").trim();
-    const name1 = req.body?.name1 !== undefined ? String(req.body.name1).trim() : null;
-    const name2 = req.body?.name2 !== undefined ? String(req.body.name2).trim() : null;
-    const name3 = req.body?.name3 !== undefined ? String(req.body.name3).trim() : null;
-    const name4 = req.body?.name4 !== undefined ? String(req.body.name4).trim() : null;
-
-    if (!name) return res.status(400).json({ error: "Name is required" });
-
-    const created = await prisma.menuCategory.create({
-      data: {
-        name,
-        name1: name1 || null,
-        name2: name2 || null,
-        name3: name3 || null,
-        name4: name4 || null,
-      },
-    });
-
+    const name = text(req.body?.name, { required: true });
+    if (!name) return res.status(400).json({ error: "valid name is required" });
+    const created = await prisma.menuCategory.create({ data: { name, name1: optionalTranslation(req.body?.name1) || null, name2: optionalTranslation(req.body?.name2) || null, name3: optionalTranslation(req.body?.name3) || null, name4: optionalTranslation(req.body?.name4) || null } });
     res.status(201).json(created);
-  } catch (e) {
-    if (e.code === "P2002") {
-      return res.status(409).json({ error: "Category already exists" });
-    }
-    console.error("POST /menu-category failed:", e);
+  } catch (error) {
+    if (error.code === "P2002") return res.status(409).json({ error: "Category already exists" });
+    console.error("create category failed", error);
     res.status(500).json({ error: "Failed to create category" });
   }
 });
-
 app.put("/menu-category/:id", requireAdmin, async (req, res) => {
   try {
-    const id = String(req.params.id);
-
-    const name = req.body?.name !== undefined ? String(req.body.name).trim() : undefined;
-    const name1 = req.body?.name1 !== undefined ? String(req.body.name1).trim() : undefined;
-    const name2 = req.body?.name2 !== undefined ? String(req.body.name2).trim() : undefined;
-    const name3 = req.body?.name3 !== undefined ? String(req.body.name3).trim() : undefined;
-    const name4 = req.body?.name4 !== undefined ? String(req.body.name4).trim() : undefined;
-
     const data = {};
-
-    if (name !== undefined) {
-      if (!name) return res.status(400).json({ error: "Name cannot be empty" });
-      data.name = name;
-    }
-
-    if (name1 !== undefined) data.name1 = name1 || null;
-    if (name2 !== undefined) data.name2 = name2 || null;
-    if (name3 !== undefined) data.name3 = name3 || null;
-    if (name4 !== undefined) data.name4 = name4 || null;
-
-    const updated = await prisma.menuCategory.update({
-      where: { id },
-      data,
-    });
-
-    res.json(updated);
-  } catch (e) {
-    if (e.code === "P2002") return res.status(409).json({ error: "Category name already exists" });
-    if (e.code === "P2025") return res.status(404).json({ error: "Category not found" });
-
-    console.error("PUT /menu-category/:id failed:", e);
-    res.status(500).json({ error: "Failed to update category" });
+    if (req.body?.name !== undefined) { const name = text(req.body.name, { required: true }); if (!name) return res.status(400).json({ error: "valid name is required" }); data.name = name; }
+    for (const field of ["name1", "name2", "name3", "name4"]) if (req.body?.[field] !== undefined) { const value = optionalTranslation(req.body[field]); if (value === null) return res.status(400).json({ error: `invalid ${field}` }); data[field] = value; }
+    res.json(await prisma.menuCategory.update({ where: { id: String(req.params.id) }, data }));
+  } catch (error) {
+    if (error.code === "P2002") return res.status(409).json({ error: "Category already exists" });
+    if (error.code === "P2025") return res.status(404).json({ error: "Category not found" });
+    console.error("update category failed", error); res.status(500).json({ error: "Failed to update category" });
   }
 });
-
 app.delete("/menu-category/:id", requireAdmin, async (req, res) => {
-  try {
-    const id = String(req.params.id);
-
-    await prisma.menuCategory.delete({ where: { id } });
-
-    res.json({ ok: true });
-  } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ error: "Category not found" });
-
-    console.error("DELETE /menu-category/:id failed:", e);
-    res.status(500).json({ error: "Failed to delete category" });
-  }
+  try { await prisma.menuCategory.delete({ where: { id: String(req.params.id) } }); res.json({ ok: true }); }
+  catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "Category not found" }); console.error("delete category failed", error); res.status(500).json({ error: "Failed to delete category" }); }
 });
 
-// ✅ Create Menu Item
+function menuItemData(body, partial = false) {
+  const data = {};
+  for (const field of ["name", "name1", "name2", "name3", "name4"]) {
+    if (partial && body?.[field] === undefined) continue;
+    const value = field === "name" ? text(body?.[field], { required: true }) : optionalTranslation(body?.[field]);
+    if (value === null || (field === "name" && !value)) return null;
+    data[field] = value;
+  }
+  if (!partial || body?.price !== undefined) { const price = parsePrice(body?.price); if (!price) return null; data.price = price; }
+  if (!partial || body?.imageUrl !== undefined) { const imageUrl = validImageSource(body?.imageUrl); if (imageUrl === null && body?.imageUrl) return null; data.imageUrl = imageUrl || null; }
+  return data;
+}
 app.post("/menu-item", requireAdmin, async (req, res) => {
   try {
-    const name = String(req.body?.name || "").trim();
-    const name1 = req.body?.name1 !== undefined ? String(req.body.name1).trim() : null;
-    const name2 = req.body?.name2 !== undefined ? String(req.body.name2).trim() : null;
-    const name3 = req.body?.name3 !== undefined ? String(req.body.name3).trim() : null;
-    const name4 = req.body?.name4 !== undefined ? String(req.body.name4).trim() : null;
-    const imageUrl = req.body?.imageUrl !== undefined ? String(req.body.imageUrl).trim() : null;
-
-    const categoryId = String(req.body?.categoryId || "").trim();
-    const priceRaw = req.body?.price;
-
-    const price = Number(priceRaw);
-
-    if (!name) return res.status(400).json({ error: "Name is required" });
-    if (!categoryId) return res.status(400).json({ error: "categoryId is required" });
-    if (!Number.isFinite(price) || price <= 0) {
-      return res.status(400).json({ error: "Price must be a number > 0" });
-    }
-
-    const cat = await prisma.menuCategory.findUnique({ where: { id: categoryId } });
-    if (!cat) return res.status(404).json({ error: "Category not found" });
-
-    const created = await prisma.menuItem.create({
-      data: {
-        name,
-        name1,
-        name2,
-        name3,
-        name4,
-        imageUrl,
-        price,
-        categoryId,
-      },
-    });
-
-    res.status(201).json(created);
-  } catch (e) {
-    console.error("POST /menu-item failed:", e);
-    res.status(500).json({ error: "Failed to create item" });
-  }
+    const data = menuItemData(req.body); const categoryId = text(req.body?.categoryId, { required: true, max: 64 });
+    if (!data || !categoryId) return res.status(400).json({ error: "invalid menu item" });
+    const category = await prisma.menuCategory.findUnique({ where: { id: categoryId } });
+    if (!category) return res.status(404).json({ error: "Category not found" });
+    res.status(201).json(await prisma.menuItem.create({ data: { ...data, categoryId } }));
+  } catch (error) { console.error("create item failed", error); res.status(500).json({ error: "Failed to create item" }); }
 });
-
-// ✅ Update Menu Item
-// ✅ Update Menu Item
 app.put("/menu-item/:id", requireAdmin, async (req, res) => {
   try {
-    const id = String(req.params.id);
-
-    const name = req.body?.name !== undefined ? String(req.body.name).trim() : undefined;
-    const name1 = req.body?.name1 !== undefined ? String(req.body.name1).trim() : undefined;
-    const name2 = req.body?.name2 !== undefined ? String(req.body.name2).trim() : undefined;
-    const name3 = req.body?.name3 !== undefined ? String(req.body.name3).trim() : undefined;
-    const name4 = req.body?.name4 !== undefined ? String(req.body.name4).trim() : undefined;
-    const imageUrl = req.body?.imageUrl !== undefined ? String(req.body.imageUrl).trim() : undefined;
-
-    const price = req.body?.price !== undefined ? Number(req.body.price) : undefined;
-    const categoryId =
-      req.body?.categoryId !== undefined ? String(req.body.categoryId).trim() : undefined;
-
-    const data = {};
-
-    if (name !== undefined) {
-      if (!name) return res.status(400).json({ error: "Name cannot be empty" });
-      data.name = name;
-    }
-
-    if (name1 !== undefined) data.name1 = name1 || null;
-    if (name2 !== undefined) data.name2 = name2 || null;
-    if (name3 !== undefined) data.name3 = name3 || null;
-    if (name4 !== undefined) data.name4 = name4 || null;
-    if (imageUrl !== undefined) data.imageUrl = imageUrl || null;
-
-    if (price !== undefined) {
-      if (!Number.isFinite(price) || price <= 0) {
-        return res.status(400).json({ error: "Price must be a number > 0" });
-      }
-      data.price = price;
-    }
-
-    if (categoryId !== undefined) {
-      if (!categoryId) return res.status(400).json({ error: "categoryId cannot be empty" });
-      const cat = await prisma.menuCategory.findUnique({ where: { id: categoryId } });
-      if (!cat) return res.status(404).json({ error: "Category not found" });
-      data.categoryId = categoryId;
-    }
-
-    const updated = await prisma.menuItem.update({
-      where: { id },
-      data,
-    });
-
-    res.json(updated);
-  } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ error: "Item not found" });
-
-    console.error("PUT /menu-item/:id failed:", e);
-    res.status(500).json({ error: "Failed to update item" });
-  }
+    const data = menuItemData(req.body, true); if (!data) return res.status(400).json({ error: "invalid menu item" });
+    if (req.body?.categoryId !== undefined) { const categoryId = text(req.body.categoryId, { required: true, max: 64 }); if (!categoryId || !(await prisma.menuCategory.findUnique({ where: { id: categoryId } }))) return res.status(400).json({ error: "invalid category" }); data.categoryId = categoryId; }
+    res.json(await prisma.menuItem.update({ where: { id: String(req.params.id) }, data }));
+  } catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "Item not found" }); console.error("update item failed", error); res.status(500).json({ error: "Failed to update item" }); }
 });
-
-// ✅ Delete Menu Item
 app.delete("/menu-item/:id", requireAdmin, async (req, res) => {
-  try {
-    const id = String(req.params.id);
-
-    await prisma.menuItem.delete({ where: { id } });
-
-    res.json({ ok: true });
-  } catch (e) {
-    if (e.code === "P2025") return res.status(404).json({ error: "Item not found" });
-
-    console.error("DELETE /menu-item/:id failed:", e);
-    res.status(500).json({ error: "Failed to delete item" });
-  }
+  try { await prisma.menuItem.delete({ where: { id: String(req.params.id) } }); res.json({ ok: true }); }
+  catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "Item not found" }); console.error("delete item failed", error); res.status(500).json({ error: "Failed to delete item" }); }
 });
 
-/* =========================
-   ORDERS (Prisma)
-========================= */
-
-app.post("/orders", requireValidTable, async (req, res) => {
+app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), requireValidTable, async (req, res) => {
   try {
-    const { tableId, items } = req.body;
-
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "items must be a non-empty array" });
+    const key = validIdempotencyKey(req.headers["idempotency-key"]);
+    const items = req.body?.items;
+    if (!key || !Array.isArray(items) || items.length < 1 || items.length > 30) return res.status(400).json({ error: "invalid order" });
+    const requested = new Map();
+    for (const item of items) {
+      const itemId = text(item?.itemId, { required: true, max: 64 }); const qty = Number(item?.qty); const note = text(item?.note, { max: 500 });
+      if (!itemId || !Number.isInteger(qty) || qty < 1 || qty > 20 || note === null) return res.status(400).json({ error: "invalid order item" });
+      if (requested.has(itemId)) return res.status(400).json({ error: "duplicate menu item" });
+      requested.set(itemId, { qty, note: note || null });
     }
-
-    const order = await prisma.order.create({
-      data: {
-        tableId: String(tableId),
-        status: "UNCLAIMED",
-        items: {
-          create: items.map((it) => ({
-            itemId: String(it.itemId),
-            name: String(it.name),
-            price: Number(it.price),
-            qty: Number(it.qty),
-            note: it.note ? String(it.note) : null,
-          })),
-        },
-      },
-      include: { items: true },
-    });
-
-    io.emit("order:new", order);
+    const existing = await prisma.order.findUnique({ where: { clientRequestId: key }, include: { items: true } });
+    if (existing) return res.status(200).json(existing);
+    const menuItems = await prisma.menuItem.findMany({ where: { id: { in: [...requested.keys()] } }, select: { id: true, name: true, price: true } });
+    if (menuItems.length !== requested.size) return res.status(400).json({ error: "one or more menu items are unavailable" });
+    const order = await prisma.order.create({ data: { tableId: req.table.id, clientRequestId: key, status: "UNCLAIMED", items: { create: menuItems.map((item) => ({ itemId: item.id, name: item.name, price: item.price, ...requested.get(item.id) })) } }, include: { items: true } });
+    io.to("staff").emit("order:new", order);
     res.status(201).json(order);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
+  } catch (error) {
+    if (error.code === "P2002") { const order = await prisma.order.findUnique({ where: { clientRequestId: String(req.headers["idempotency-key"]) }, include: { items: true } }); if (order) return res.json(order); }
+    console.error("create order failed", error); res.status(500).json({ error: "Unable to create order" });
   }
 });
-
 app.get("/orders/unclaimed", requireStaffOrAdminAuth, async (req, res) => {
+  try { res.json(await prisma.order.findMany({ where: { status: "UNCLAIMED" }, orderBy: { createdAt: "desc" }, take: parseLimit(req.query.limit), include: { items: true } })); }
+  catch (error) { console.error("list unclaimed orders failed", error); res.status(500).json({ error: "server error" }); }
+});
+app.get("/orders/claimed", requireStaffOrAdminAuth, async (req, res) => {
+  try { res.json(await prisma.order.findMany({ where: { status: "CLAIMED" }, orderBy: { claimedAt: "desc" }, take: parseLimit(req.query.limit), include: { items: true } })); }
+  catch (error) { console.error("list claimed orders failed", error); res.status(500).json({ error: "server error" }); }
+});
+async function transitionOrder(req, res, from, data, event) {
   try {
-    const data = await prisma.order.findMany({
-      where: { status: "UNCLAIMED" },
-      orderBy: { createdAt: "desc" },
-      include: { items: true },
-    });
-
-    res.json(data);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
+    const orderId = String(req.params.orderId || req.params.id);
+    const result = await prisma.order.updateMany({ where: { id: orderId, status: from }, data });
+    if (!result.count) return res.status(409).json({ error: "order is no longer available for this action" });
+    const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
+    io.to("staff").emit(event, order);
+    res.json(order);
+  } catch (error) { console.error("order transition failed", error); res.status(500).json({ error: "server error" }); }
+}
+app.patch("/orders/:orderId/claim", requireStaffOrAdminAuth, (req, res) => transitionOrder(req, res, "UNCLAIMED", { status: "CLAIMED", claimedAt: new Date(), claimedById: null }, "order:updated"));
+app.post("/orders/:id/unclaim", requireStaffOrAdminAuth, (req, res) => transitionOrder(req, res, "CLAIMED", { status: "UNCLAIMED", claimedAt: null, claimedById: null }, "order:updated"));
+app.post("/orders/:id/complete", requireStaffOrAdminAuth, (req, res) => transitionOrder(req, res, "CLAIMED", { status: "COMPLETED", completedAt: new Date() }, "order:updated"));
+app.delete("/orders/:orderId", requireAdmin, async (req, res) => {
+  try { await prisma.order.delete({ where: { id: String(req.params.orderId) } }); io.to("staff").emit("order:deleted", { orderId: String(req.params.orderId) }); res.json({ ok: true }); }
+  catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "order not found" }); console.error("delete order failed", error); res.status(500).json({ error: "server error" }); }
 });
 
-app.patch("/orders/:orderId/claim", requireStaffOrAdminAuth, async (req, res) => {
+app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requireValidTable, async (req, res) => {
   try {
-    const { orderId } = req.params;
-    const waiterId = Number(req.body.waiterId);
-
-    if (!Number.isInteger(waiterId)) {
-      return res.status(400).json({ error: "valid waiterId is required" });
-    }
-
-    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
-
-    const result = await prisma.order.updateMany({
-      where: { id: String(orderId), status: "UNCLAIMED" },
-      data: {
-        status: "CLAIMED",
-        claimedById: waiterId,
-        claimedAt: new Date(),
-      },
-    });
-
-    if (result.count === 0) {
-      const exists = await prisma.order.findUnique({ where: { id: String(orderId) } });
-      if (!exists) return res.status(404).json({ error: "order not found" });
-      return res.status(409).json({ error: "order already claimed" });
-    }
-
-    const updated = await prisma.order.findUnique({
-      where: { id: String(orderId) },
-      include: { items: true },
-    });
-
-    io.emit("order:claimed", { orderId: String(orderId), waiterId });
-    res.json(updated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
+    const type = ["waiter", "bill"].includes(req.body?.type) ? req.body.type : null;
+    if (!type) return res.status(400).json({ error: "invalid call type" });
+    const call = await prisma.call.create({ data: { tableId: req.table.id, type, status: "OPEN" } });
+    io.to("staff").emit("call:new", call); res.status(201).json(call);
+  } catch (error) { console.error("create call failed", error); res.status(500).json({ error: "Unable to create call" }); }
+});
+app.get("/tables/:tableId", requireValidTable, (req, res) => res.json({ id: req.table.id, name: req.table.name }));
+app.get("/calls/open", requireStaffOrAdminAuth, async (req, res) => {
+  try { res.json(await prisma.call.findMany({ where: { status: "OPEN" }, orderBy: { createdAt: "desc" }, take: parseLimit(req.query.limit) })); }
+  catch (error) { console.error("list calls failed", error); res.status(500).json({ error: "server error" }); }
+});
+app.patch("/calls/:callId/handle", requireStaffOrAdminAuth, async (req, res) => {
+  try {
+    const result = await prisma.call.updateMany({ where: { id: String(req.params.callId), status: "OPEN" }, data: { status: "HANDLED", handledAt: new Date(), handledById: null } });
+    if (!result.count) return res.status(409).json({ error: "call is no longer open" });
+    const call = await prisma.call.findUnique({ where: { id: String(req.params.callId) } });
+    io.to("staff").emit("call:handled", { callId: call.id }); res.json(call);
+  } catch (error) { console.error("handle call failed", error); res.status(500).json({ error: "server error" }); }
 });
 
-app.post("/orders/:id/unclaim", requireStaffOrAdminAuth, async (req, res) => {
-  try {
-    const orderId = String(req.params.id);
-    const waiterId = Number(req.body.waiterId);
-
-    if (!Number.isInteger(waiterId)) {
-      return res.status(400).json({ error: "valid waiterId is required" });
-    }
-
-    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
-
-    const result = await prisma.order.updateMany({
-      where: {
-        id: orderId,
-        status: "CLAIMED",
-        claimedById: waiterId,
-      },
-      data: {
-        status: "UNCLAIMED",
-        claimedById: null,
-        claimedAt: null,
-      },
-    });
-
-    if (result.count === 0) {
-      const order = await prisma.order.findUnique({ where: { id: orderId } });
-      if (!order) return res.status(404).json({ error: "order not found" });
-      if (order.status !== "CLAIMED") return res.status(409).json({ error: "order is not claimed" });
-      return res.status(403).json({ error: "not your order" });
-    }
-
-    const updated = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: { items: true },
-    });
-
-    io.emit("order:updated", updated);
-    res.json(updated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.get("/orders/claimed/:waiterId", requireStaffOrAdminAuth, async (req, res) => {
-  try {
-    const waiterId = Number(req.params.waiterId);
-    if (!Number.isInteger(waiterId)) {
-      return res.status(400).json({ error: "valid waiterId is required" });
-    }
-
-    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
-
-    const data = await prisma.order.findMany({
-      where: { status: "CLAIMED", claimedById: waiterId },
-      orderBy: { claimedAt: "desc" },
-      include: { items: true },
-    });
-
-    res.json(data);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.delete("/orders/:orderId", requireStaffOrAdminAuth, async (req, res) => {
-  try {
-    const orderId = String(req.params.orderId);
-
-    const existing = await prisma.order.findUnique({ where: { id: orderId } });
-    if (!existing) {
-      return res.json({ success: true, orderId, alreadyDeleted: true });
-    }
-
-    if (
-      req.staffAuth?.type === "waiter" &&
-      existing.claimedById !== req.staffAuth.waiterId
-    ) {
-      return res.status(403).json({ error: "not your order" });
-    }
-
-    await prisma.order.delete({ where: { id: orderId } });
-    io.emit("order:deleted", { orderId });
-
-    res.json({ success: true, orderId });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.post("/orders/:id/complete", requireStaffOrAdminAuth, async (req, res) => {
-  try {
-    const orderId = String(req.params.id);
-    const waiterId = Number(req.body.waiterId);
-
-    if (!Number.isInteger(waiterId)) {
-      return res.status(400).json({ error: "valid waiterId is required" });
-    }
-
-    if (!requireMatchingWaiterOrAdmin(req, res, waiterId)) return;
-
-    const result = await prisma.order.updateMany({
-      where: {
-        id: orderId,
-        status: "CLAIMED",
-        claimedById: waiterId,
-      },
-      data: {
-        status: "COMPLETED",
-        completedAt: new Date(),
-      },
-    });
-
-    if (result.count === 0) {
-      const order = await prisma.order.findUnique({ where: { id: orderId } });
-      if (!order) return res.status(404).json({ error: "order not found" });
-      if (order.status !== "CLAIMED") {
-        return res.status(409).json({ error: "order is not claimed" });
-      }
-      return res.status(403).json({ error: "not your order" });
-    }
-
-    const updated = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: { items: true },
-    });
-
-    io.emit("order:updated", updated);
-    res.json(updated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-/* =========================
-   CALLS (Prisma)
-========================= */
-
-app.post("/calls", requireValidTable, async (req, res) => {
-  try {
-    const { tableId, type } = req.body;
-
-    const call = await prisma.call.create({
-      data: {
-        tableId: String(tableId),
-        type: type || "waiter",
-        status: "OPEN",
-      },
-    });
-
-    io.emit("call:new", call);
-    res.status(201).json(call);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.get("/tables/:tableId", async (req, res) => {
-  try {
-    const { tableId } = req.params;
-    const token = String(req.query.token || "");
-
-    const table = await prisma.table.findUnique({ where: { id: String(tableId) } });
-    if (!table || !table.isActive) return res.status(404).json({ error: "table not found" });
-    if (!token || table.token !== token) return res.status(403).json({ error: "invalid token" });
-
-    res.json({ id: table.id, name: table.name });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.get("/calls/open", requireCallManagerAuth, async (req, res) => {
-  try {
-    const data = await prisma.call.findMany({
-      where: { status: "OPEN" },
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(data);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.patch("/calls/:callId/handle", requireCallManagerAuth, async (req, res) => {
-  try {
-    const { callId } = req.params;
-    const waiterId = Number(req.body.waiterId);
-
-    if (!Number.isInteger(waiterId)) {
-      return res.status(400).json({ error: "valid waiterId is required" });
-    }
-
-    if (req.callManager?.type === "waiter" && req.callManager.waiterId !== waiterId) {
-      return res.status(403).json({ error: "staff access forbidden" });
-    }
-
-    const call = await prisma.call.findUnique({ where: { id: callId } });
-    if (!call) return res.status(404).json({ error: "call not found" });
-    if (call.status !== "OPEN") return res.status(409).json({ error: "already handled" });
-
-    const updated = await prisma.call.update({
-      where: { id: callId },
-      data: {
-        status: "HANDLED",
-        handledById: waiterId,
-        handledAt: new Date(),
-      },
-    });
-
-    io.emit("call:handled", { callId: updated.id, waiterId });
-    res.json(updated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-/* =========================
-   WAITERS (Public)
-========================= */
-
-app.get("/waiters", async (req, res) => {
-  try {
-    const waiters = await prisma.waiter.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    });
-
-    res.json(waiters);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.get("/waiters/:waiterId", async (req, res) => {
-  try {
-    const id = Number(req.params.waiterId);
-    if (!Number.isInteger(id)) return res.status(400).json({ error: "invalid waiter id" });
-
-    const w = await prisma.waiter.findUnique({
-      where: { id },
-      select: { id: true, name: true, isActive: true, createdAt: true },
-    });
-
-    if (!w) return res.status(404).json({ error: "waiter not found" });
-    res.json(w);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-/* =========================
-   ADMIN: TABLES (CRUD)
-========================= */
 app.use("/api/admin", requireAdmin);
-
 app.get("/api/admin/tables", async (req, res) => {
-  try {
-    const tables = await prisma.table.findMany({
-      orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, token: true, isActive: true, createdAt: true },
-    });
-    res.json(tables);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
+  try { res.json(await prisma.table.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, token: true, isActive: true, createdAt: true } })); }
+  catch (error) { console.error("list tables failed", error); res.status(500).json({ error: "Unable to load tables" }); }
 });
-
 app.get("/api/admin/orders", async (req, res) => {
-  try {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        items: true,
-        claimedBy: {
-          select: { id: true, name: true },
-        },
-      },
-    });
-
-    res.json(orders);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
+  try { res.json(await prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: parseLimit(req.query.limit, 250, 500), include: { items: true, claimedBy: { select: { id: true, name: true } } } })); }
+  catch (error) { console.error("list admin orders failed", error); res.status(500).json({ error: "Unable to load orders" }); }
 });
-
 app.post("/api/admin/tables", async (req, res) => {
   try {
-    const { id, name } = req.body;
-
-    if (!id || typeof id !== "string") {
-      return res.status(400).json({ error: "id (string) is required, e.g. 't1' or '1'" });
-    }
-
-    const created = await prisma.table.create({
-      data: {
-        id: String(id),
-        name: name ? String(name) : null,
-        token: randomToken(),
-        isActive: true,
-      },
-      select: { id: true, name: true, token: true, isActive: true, createdAt: true },
-    });
-
-    res.status(201).json(created);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
+    const id = text(req.body?.id, { required: true, max: 64 }); const name = text(req.body?.name, { max: 120 });
+    if (!id || !/^[A-Za-z0-9_-]+$/.test(id) || name === null) return res.status(400).json({ error: "invalid table" });
+    res.status(201).json(await prisma.table.create({ data: { id, name: name || null, token: randomToken(), isActive: true }, select: { id: true, name: true, token: true, isActive: true, createdAt: true } }));
+  } catch (error) { if (error.code === "P2002") return res.status(409).json({ error: "table already exists" }); console.error("create table failed", error); res.status(500).json({ error: "Unable to create table" }); }
 });
-
 app.put("/api/admin/tables/:tableId", async (req, res) => {
   try {
-    const tableId = String(req.params.tableId);
-    const { name, isActive } = req.body;
-
-    const data = {};
-    if (name !== undefined) data.name = name ? String(name) : null;
-    if (isActive !== undefined) data.isActive = !!isActive;
-
-    const updated = await prisma.table.update({
-      where: { id: tableId },
-      data,
-      select: { id: true, name: true, token: true, isActive: true, createdAt: true },
-    });
-
-    res.json(updated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
+    const data = {}; if (req.body?.name !== undefined) { const name = text(req.body.name, { max: 120 }); if (name === null) return res.status(400).json({ error: "invalid name" }); data.name = name || null; } if (req.body?.isActive !== undefined && typeof req.body.isActive !== "boolean") return res.status(400).json({ error: "invalid isActive" }); if (req.body?.isActive !== undefined) data.isActive = req.body.isActive;
+    res.json(await prisma.table.update({ where: { id: String(req.params.tableId) }, data, select: { id: true, name: true, token: true, isActive: true, createdAt: true } }));
+  } catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "table not found" }); console.error("update table failed", error); res.status(500).json({ error: "Unable to update table" }); }
 });
-
 app.delete("/api/admin/tables/:tableId", async (req, res) => {
-  try {
-    const tableId = String(req.params.tableId);
-    await prisma.table.delete({ where: { id: tableId } });
-    res.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
+  try { await prisma.table.delete({ where: { id: String(req.params.tableId) } }); res.json({ ok: true }); }
+  catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "table not found" }); console.error("delete table failed", error); res.status(500).json({ error: "Unable to delete table" }); }
 });
-
 app.post("/api/admin/tables/:tableId/rotate-token", async (req, res) => {
-  try {
-    const tableId = String(req.params.tableId);
-
-    const updated = await prisma.table.update({
-      where: { id: tableId },
-      data: { token: randomToken() },
-      select: { id: true, name: true, token: true, isActive: true, createdAt: true },
-    });
-
-    res.json({ ok: true, table: updated });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
+  try { const table = await prisma.table.update({ where: { id: String(req.params.tableId) }, data: { token: randomToken() }, select: { id: true, name: true, token: true, isActive: true, createdAt: true } }); res.json({ ok: true, table }); }
+  catch (error) { if (error.code === "P2025") return res.status(404).json({ error: "table not found" }); console.error("rotate token failed", error); res.status(500).json({ error: "Unable to rotate token" }); }
 });
-
 app.get("/api/admin/tables/:tableId/scan-url", async (req, res) => {
-  try {
-    const tableId = String(req.params.tableId);
-
-    const table = await prisma.table.findUnique({
-      where: { id: tableId },
-      select: { id: true, token: true, isActive: true },
-    });
-
-    if (!table || !table.isActive) return res.status(404).json({ error: "table not found" });
-
-    const base = PUBLIC_CLIENT_URL;
-    const url = `${base}/t/${table.id}?token=${encodeURIComponent(table.token)}`;
-
-    res.json({ url, tableId: table.id, token: table.token });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
+  try { const table = await prisma.table.findUnique({ where: { id: String(req.params.tableId) }, select: { id: true, token: true, isActive: true } }); if (!table || !table.isActive) return res.status(404).json({ error: "table not found" }); res.json({ url: `${PUBLIC_CLIENT_URL}/t/${table.id}?token=${encodeURIComponent(table.token)}` }); }
+  catch (error) { console.error("scan URL failed", error); res.status(500).json({ error: "Unable to create scan URL" }); }
 });
-
-/* =========================
-   ADMIN: WAITERS (CRUD) - NO PIN
-========================= */
-app.get("/api/admin/waiters", async (req, res) => {
-  try {
-    const waiters = await prisma.waiter.findMany({
-      orderBy: { id: "asc" },
-      select: { id: true, name: true, isActive: true, createdAt: true },
-    });
-    res.json(waiters);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
-});
-
-app.post("/api/admin/waiters", async (req, res) => {
-  try {
-    const { name } = req.body;
-
-    if (!name || typeof name !== "string") {
-      return res.status(400).json({ error: "name is required" });
-    }
-
-    const created = await prisma.waiter.create({
-      data: {
-        name: String(name),
-        isActive: true,
-      },
-      select: { id: true, name: true, isActive: true, createdAt: true },
-    });
-
-    res.status(201).json(created);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.put("/api/admin/waiters/:waiterId", async (req, res) => {
-  try {
-    const waiterId = Number(req.params.waiterId);
-    if (!Number.isInteger(waiterId)) return res.status(400).json({ error: "invalid waiter id" });
-
-    const { name, isActive } = req.body;
-
-    const data = {};
-    if (name !== undefined) data.name = String(name);
-    if (isActive !== undefined) data.isActive = !!isActive;
-
-    const updated = await prisma.waiter.update({
-      where: { id: waiterId },
-      data,
-      select: { id: true, name: true, isActive: true, createdAt: true },
-    });
-
-    res.json(updated);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.delete("/api/admin/waiters/:waiterId", async (req, res) => {
-  try {
-    const waiterId = Number(req.params.waiterId);
-    if (!Number.isInteger(waiterId)) return res.status(400).json({ error: "invalid waiter id" });
-
-    await prisma.waiter.delete({ where: { id: waiterId } });
-    res.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
-});
-
 app.get("/api/admin/tables/:tableId/orders", async (req, res) => {
-  try {
-    const tableId = String(req.params.tableId);
-
-    const table = await prisma.table.findUnique({
-      where: { id: tableId },
-      select: { id: true },
-    });
-
-    if (!table) return res.status(404).json({ error: "table not found" });
-
-    const orders = await prisma.order.findMany({
-      where: { tableId },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: { items: true },
-    });
-
-    res.json(orders);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "server error" });
-  }
+  try { const tableId = String(req.params.tableId); const table = await prisma.table.findUnique({ where: { id: tableId }, select: { id: true } }); if (!table) return res.status(404).json({ error: "table not found" }); res.json(await prisma.order.findMany({ where: { tableId }, orderBy: { createdAt: "desc" }, take: parseLimit(req.query.limit, 50, 100), include: { items: true } })); }
+  catch (error) { console.error("table orders failed", error); res.status(500).json({ error: "Unable to load orders" }); }
 });
 
-/* ---------- Start server ---------- */
-if (require.main === module) {
-  server.listen(PORT, "127.0.0.1", () => {
-    console.log("Server running on port", PORT);
-  });
-}
+app.use((error, req, res, next) => {
+  console.error("Unhandled request error", error);
+  if (res.headersSent) return next(error);
+  res.status(500).json({ error: "server error" });
+});
 
-module.exports = {
-  app,
-  server,
-  io,
-  prisma,
-  requireAdmin,
-  requireValidTable,
-  requireStaffOrAdminAuth,
-  requireCallManagerAuth,
-};
-
+if (require.main === module) server.listen(PORT, "127.0.0.1", () => console.log(`Server running on port ${PORT}`));
+module.exports = { app, server, io, prisma, requireAdmin, requireValidTable, requireStaffOrAdminAuth, getTokenRole };

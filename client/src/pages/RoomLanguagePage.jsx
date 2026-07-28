@@ -16,7 +16,6 @@ export default function RoomLanguagePage() {
     sessionStorage.setItem(tokenStorageKey, urlToken);
   }
 
-  const token = urlToken || sessionStorage.getItem(tokenStorageKey) || "";
 
   const [selectedLang, setSelectedLang] = useState(initialLang);
   const [languageConfirmed, setLanguageConfirmed] = useState(false);

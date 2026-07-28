@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/AdminMenuPage.css";
+import { clearAdminAuth, getAdminAuth } from "../adminAuth";
 
 const emptyCategoryForm = {
   name: "",
@@ -60,11 +61,11 @@ export default function AdminMenuPage() {
   const dropdownRef = useRef(null);
 
   function getAuth() {
-    return localStorage.getItem("adminAuth") || "";
+    return getAdminAuth();
   }
 
   function clearAuthAndGoLogin() {
-    localStorage.removeItem("adminAuth");
+    clearAdminAuth();
     nav("/admin");
   }
 

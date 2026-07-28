@@ -131,22 +131,20 @@ export default function TablesDemoPage() {
               </div>
 
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                {hovered && (
-                  <button
-                    onClick={() => viewOrders(t.id)}
-                    style={{
-                      padding: "8px 12px",
-                      cursor: "pointer",
-                      backgroundColor: "#374151",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 6,
-                      fontWeight: 700,
-                    }}
-                  >
-                    Pogledaj narudžbe
-                  </button>
-                )}
+                <button
+                  onClick={() => viewOrders(t.id)}
+                  style={{
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    backgroundColor: hovered ? "#374151" : "#263244",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 6,
+                    fontWeight: 700,
+                  }}
+                >
+                  Pogledaj narudžbe
+                </button>
 
                 <button
                   onClick={() => openTable(t.id)}

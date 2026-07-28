@@ -15,22 +15,24 @@ export default function AdminLogin() {
     e.preventDefault();
     setErr("");
 
-    const auth = "Basic " + btoa(`${user}:${pass}`);
     setLoading(true);
 
     try {
-      const r = await fetch(`${api}/api/admin/tables`, {
-        headers: { Authorization: auth },
+      const r = await fetch(`${api}/auth/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user, password: pass }),
       });
 
       if (!r.ok) throw new Error("Wrong username or password");
+      const { token } = await r.json();
+      if (!token) throw new Error("Login failed");
 
-      setAdminAuth(auth);
-      localStorage.setItem("adminAuth", auth);
+      setAdminAuth(token);
+      setPass("");
 
       nav("/admin/home");
     } catch (e2) {
-      localStorage.removeItem("adminAuth");
       setAdminAuth("");
       setErr(e2.message || "Login failed");
     } finally {

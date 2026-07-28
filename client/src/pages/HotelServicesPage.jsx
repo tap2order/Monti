@@ -17,7 +17,6 @@ export default function HotelServicesPage() {
     sessionStorage.setItem(tokenStorageKey, urlToken);
   }
 
-  const token = urlToken || sessionStorage.getItem(tokenStorageKey) || "";
 
   useEffect(() => {
     if (urlToken) {

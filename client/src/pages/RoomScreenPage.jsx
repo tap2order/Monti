@@ -1,22 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import "../css/RoomScreenPage.css";
 
 export default function RoomScreenPage() {
   const { tableId } = useParams();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
 
   const [clock, setClock] = useState("12:00");
   const [date, setDate] = useState("Loading date...");
   const [temperature, setTemperature] = useState("Igman · --°C");
 
   const bgRef = useRef(null);
-
-  const guestUrl = useMemo(() => {
-    if (!tableId || !token) return "";
-    return `${window.location.origin}/t/${tableId}?token=${token}`;
-  }, [tableId, token]);
 
   // Ako koristiš već gotovu QR sliku u public folderu:
   // npr public/qr-monti-room-204.png
