@@ -119,6 +119,36 @@ test("pending session survives refresh but cannot access protected endpoints", a
   assert.equal((await blocked.json()).code, "ROOM_VERIFICATION_REQUIRED");
 });
 
+test("bootstrap reuses a valid pending or verified session for the same room", async () => {
+  const pending = await pendingCookie();
+  const pendingAgain = await request("/api/guest/room-session/bootstrap", {
+    method: "POST",
+    headers: { Cookie: pending },
+    body: { roomId: "1", token: "table-token" },
+  });
+  assert.equal(pendingAgain.status, 200);
+  assert.equal((await pendingAgain.json()).status, "verification_required");
+  assert.equal(roomSessions.length, 1);
+
+  const verified = await request("/api/guest/room-session/verify", {
+    method: "POST",
+    headers: { Cookie: pending },
+    body: { scannedValue: "http://localhost:5173/t/1?token=table-token" },
+  });
+  assert.equal(verified.status, 200);
+
+  const verifiedAgain = await request("/api/guest/room-session/bootstrap", {
+    method: "POST",
+    headers: { Cookie: pending },
+    body: { roomId: "1", token: "table-token" },
+  });
+  const payload = await verifiedAgain.json();
+  assert.equal(verifiedAgain.status, 200);
+  assert.equal(payload.status, "verified");
+  assert.equal(payload.roomId, "1");
+  assert.equal(roomSessions.length, 1);
+});
+
 test("verification rejects wrong origin, path, extra query and duplicate token", async () => {
   for (const scannedValue of [
     "https://evil.example/t/1?token=table-token",

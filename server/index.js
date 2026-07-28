@@ -349,8 +349,23 @@ app.post("/api/guest/room-session/bootstrap", rateLimit({ key: "guest-room-boots
     if (!room || !room.isActive || !token || !timingSafeTokenEqual(token, room.token)) {
       return res.status(403).json({ code: "ROOM_SESSION_BOOTSTRAP_FAILED", message: "QR kod nije moguće potvrditi." });
     }
+    const now = new Date();
     const existing = await findDbRoomSession(req);
-    if (existing && !existing.revokedAt) await prisma.roomVerificationSession.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
+    const reusable = existing
+      && !existing.revokedAt
+      && existing.expiresAt > now
+      && existing.room?.isActive
+      && String(existing.roomId) === String(room.id);
+    if (reusable) {
+      return res.json({
+        status: existing.verifiedAt ? "verified" : "verification_required",
+        roomId: existing.verifiedAt ? existing.roomId : undefined,
+        expiresInSeconds: remainingSessionSeconds(existing.expiresAt, now),
+      });
+    }
+    if (existing && !existing.revokedAt) {
+      await prisma.roomVerificationSession.update({ where: { id: existing.id }, data: { revokedAt: now } });
+    }
     const created = await createRoomSession(room.id, false);
     setRoomCookie(res, created.rawToken, created.ttl);
     res.status(201).json({ status: "verification_required", expiresInSeconds: created.ttl });
