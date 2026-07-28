@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { Outlet, Routes, Route, useLocation } from "react-router-dom";
+import "./App.css";
 import TablePage from "./pages/TablePage";
 import WaiterPage from "./pages/WaiterPage";
 import TablesDemoPage from "./pages/TablesDemoPage";
@@ -11,18 +12,32 @@ import HotelServicesPage from "./pages/HotelServicesPage";
 import AdminOrdersOverviewPage from "./pages/AdminOrdersOverviewPage";
 import RoomSessionGate from "./components/RoomSessionGate";
 
+function GuestRoomLayout() {
+  const location = useLocation();
+
+  return (
+    <RoomSessionGate>
+      <div key={location.pathname} className="guestRouteTransition">
+        <Outlet />
+      </div>
+    </RoomSessionGate>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
-      <Route path="/t/:tableId" element={<RoomSessionGate><RoomLanguagePage /></RoomSessionGate>} />
-      <Route path="/t/:tableId/menu" element={<RoomSessionGate><TablePage /></RoomSessionGate>} />
+      <Route path="/t/:tableId" element={<GuestRoomLayout />}>
+        <Route index element={<RoomLanguagePage />} />
+        <Route path="menu" element={<TablePage />} />
+        <Route path="services" element={<HotelServicesPage />} />
+      </Route>
       <Route path="/waiter" element={<WaiterPage />} />
       <Route path="/admin/tables" element={<TablesDemoPage />} />
       <Route path="/admin/home" element={<AdminHome />} />
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/menu" element={<AdminMenuPage />} />
       <Route path="/t/:tableId/screen" element={<RoomScreenPage />} />
-      <Route path="/t/:tableId/services" element={<RoomSessionGate><HotelServicesPage /></RoomSessionGate>} />
       <Route path="/admin/orders-overview" element={<AdminOrdersOverviewPage />} />
       <Route
         path="*"
