@@ -129,7 +129,7 @@ test("verification rejects wrong origin, path, extra query and duplicate token",
     const response = await request("/api/guest/room-session/verify", {
       method: "POST", headers: { Cookie: await pendingCookie() }, body: { scannedValue },
     });
-    assert.equal(response.status, 403);
+    assert.equal(response.status, 400);
   }
 });
 
