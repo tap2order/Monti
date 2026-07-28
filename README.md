@@ -20,8 +20,10 @@ the application and adds safe indexes/idempotency support. Do not apply it
 directly to production: first back up the database, run it on staging, then use
 `prisma migrate deploy` in a planned maintenance window.
 
-This repository intentionally has CI verification only. Production deployment,
-server restart and migration execution require a separate reviewed runbook.
+This repository runs CI verification and deploys production from `main` through
+`.github/workflows/deploy-monti.yml`. The workflow updates the VPS checkout,
+deploys Prisma migrations, rebuilds the client and restarts the `monti` PM2
+process.
 # Room Service QR verifikacija
 
 Gostujući Room Service koristi dvostepenu verifikaciju. Prvo otvaranje štampanog
