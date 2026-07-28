@@ -15,6 +15,26 @@ import {
 import "./RoomSessionGate.css";
 
 const BILINGUAL_CAMERA_TEXT = getBilingualCameraText();
+const verifiedRoomCache = new Map();
+
+function hasCachedVerification(roomId) {
+  const expiresAt = verifiedRoomCache.get(String(roomId));
+  if (!expiresAt || expiresAt <= Date.now()) {
+    verifiedRoomCache.delete(String(roomId));
+    return false;
+  }
+  return true;
+}
+
+function cacheVerification(roomId, expiresInSeconds) {
+  if (Number.isFinite(expiresInSeconds) && expiresInSeconds > 0) {
+    verifiedRoomCache.set(String(roomId), Date.now() + expiresInSeconds * 1000);
+  }
+}
+
+function clearCachedVerification(roomId) {
+  verifiedRoomCache.delete(String(roomId));
+}
 
 export default function RoomSessionGate({ children }) {
   const { tableId } = useParams();
@@ -28,7 +48,11 @@ export default function RoomSessionGate({ children }) {
   const startingRef = useRef(false);
   const mountedRef = useRef(true);
   const expiryTimerRef = useRef(null);
-  const [state, setState] = useState("restoring");
+  const [state, setState] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    const hasQrToken = params.has("token") || params.has("code");
+    return !hasQrToken && hasCachedVerification(tableId) ? "verified" : "restoring";
+  });
   const [message, setMessage] = useState("");
   const [canScan, setCanScan] = useState(false);
   const [reverify, setReverify] = useState(false);
@@ -61,16 +85,20 @@ export default function RoomSessionGate({ children }) {
     if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0) return;
     expiryTimerRef.current = setTimeout(() => {
       stopScanner();
+      clearCachedVerification(tableId);
       setState("verification_required");
       setCanScan(true);
       setReverify(true);
       setMessage(BILINGUAL_CAMERA_TEXT.expired);
       setCameraStartRequired(true);
     }, expiresInSeconds * 1000);
-  }, [clearExpiryTimer, stopScanner]);
+  }, [clearExpiryTimer, stopScanner, tableId]);
 
   const restore = useCallback(async ({ expiredMessage = "" } = {}) => {
-    setState("restoring");
+    const currentLocation = locationRef.current;
+    const params = new URLSearchParams(currentLocation.search);
+    const token = params.get("token") || params.get("code");
+    if (token || !hasCachedVerification(tableId)) setState("restoring");
     setMessage(expiredMessage);
     setCanScan(false);
     setReverify(false);
@@ -78,9 +106,6 @@ export default function RoomSessionGate({ children }) {
     setCameraIssue("");
     setShowInstructions(false);
     clearExpiryTimer();
-    const currentLocation = locationRef.current;
-    const params = new URLSearchParams(currentLocation.search);
-    const token = params.get("token") || params.get("code");
     try {
       let payload;
       if (token) {
@@ -105,15 +130,18 @@ export default function RoomSessionGate({ children }) {
         payload = confirmed.payload;
       }
       if (payload?.status === "verified" && String(payload.roomId) === String(tableId)) {
+        cacheVerification(tableId, payload.expiresInSeconds);
         setState("verified");
         scheduleExpiryLock(payload.expiresInSeconds);
       } else if (payload?.status === "expired") {
+        clearCachedVerification(tableId);
         setState("verification_required");
         setMessage(BILINGUAL_CAMERA_TEXT.expired);
         setCanScan(true);
         setReverify(true);
         setCameraStartRequired(true);
       } else {
+        clearCachedVerification(tableId);
         setState("verification_required");
         setCanScan(true);
         setReverify(payload?.status !== "verification_required");
@@ -141,6 +169,7 @@ export default function RoomSessionGate({ children }) {
     const onInvalid = (event) => {
       stopScanner();
       clearExpiryTimer();
+      clearCachedVerification(tableId);
       sessionStorage.removeItem(`hotel_guest_cart_${tableId}`);
       setState("verification_required");
       const expired = event.detail?.code === "ROOM_SESSION_EXPIRED";
@@ -181,10 +210,12 @@ export default function RoomSessionGate({ children }) {
         setMessage(BILINGUAL_CAMERA_TEXT.cookieError);
         return;
       }
+      cacheVerification(tableId, confirmed.payload.expiresInSeconds);
       setState("verified");
       setMessage(BILINGUAL_CAMERA_TEXT.confirmed);
       scheduleExpiryLock(confirmed.payload.expiresInSeconds);
     } catch {
+      clearCachedVerification(tableId);
       setState("verification_required");
       setCanScan(true);
       setCameraStartRequired(true);

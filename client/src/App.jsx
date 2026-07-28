@@ -1,5 +1,4 @@
-import { Outlet, Routes, Route, useLocation } from "react-router-dom";
-import "./App.css";
+import { Outlet, Routes, Route } from "react-router-dom";
 import TablePage from "./pages/TablePage";
 import WaiterPage from "./pages/WaiterPage";
 import TablesDemoPage from "./pages/TablesDemoPage";
@@ -13,13 +12,9 @@ import AdminOrdersOverviewPage from "./pages/AdminOrdersOverviewPage";
 import RoomSessionGate from "./components/RoomSessionGate";
 
 function GuestRoomLayout() {
-  const location = useLocation();
-
   return (
     <RoomSessionGate>
-      <div key={location.pathname} className="guestRouteTransition">
-        <Outlet />
-      </div>
+      <Outlet />
     </RoomSessionGate>
   );
 }

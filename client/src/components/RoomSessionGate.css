@@ -17,7 +17,6 @@
   background:
     radial-gradient(760px 460px at 50% -6%, rgba(212, 166, 58, 0.14), transparent 62%),
     linear-gradient(180deg, rgba(2, 5, 11, 0.74), rgba(2, 5, 11, 0.94)),
-    url("/images/bg.jpg") center / cover no-repeat,
     var(--gv-bg);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-overflow-scrolling: touch;
