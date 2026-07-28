@@ -1,4 +1,6 @@
 node_modules
 .env
+/server/.env
+/client/.env.production
 stuff_to_add.txt
 server/public/qrcodes/
