@@ -1,0 +1,31 @@
+name: Deploy Monti Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monti-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Monti to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Run restricted VPS deployment
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_DEPLOY_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.VPS_SSH_FINGERPRINT }}
+          command_timeout: 25m
