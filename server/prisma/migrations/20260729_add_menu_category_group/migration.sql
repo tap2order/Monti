@@ -11,14 +11,20 @@ SET "group" = CASE
   WHEN lower(coalesce("name", '')) = ANY (ARRAY[
     'topli napici', 'gazirani sokovi', 'prirodni cijeđeni sokovi',
     'prirodni cijeđeni sokovi', 'pića', 'pica', 'napici', 'kafa', 'čajevi',
-    'cajevi', 'kokteli', 'vina', 'piva', 'energetska pića', 'energetska pica',
+    'cajevi', 'kokteli', 'vina', 'piva', 'pivo', 'piva i cideri', 'voda', 'vode',
+    'voda i bezalkoholna pića', 'mineralna voda', 'gazirana voda',
+    'negazirana voda', 'prirodna voda', 'konjak', 'konjaci', 'cognac',
+    'viski', 'whisky', 'whiskey', 'rakija', 'žestoka pića', 'žestoka alkoholna pića', 'zestoka pica',
+    'likeri', 'aperitivi', 'digestivi', 'energetska pića', 'energetska pica',
     'coffee', 'tea', 'fresh juices', 'soft drinks', 'cocktails', 'milkshakes',
-    'smoothies', 'energy drinks'
+    'smoothies', 'energy drinks', 'water', 'mineral water', 'sparkling water',
+    'still water', 'beer', 'beers', 'wine', 'wines', 'brandy', 'cognac',
+    'whisky', 'whiskey', 'spirits', 'liqueurs', 'aperitifs', 'digestifs'
   ])
-  OR lower(coalesce("name1", '')) = ANY (ARRAY['drinks', 'coffee', 'tea', 'fresh juices', 'soft drinks', 'cocktails', 'milkshakes', 'smoothies', 'energy drinks'])
-  OR lower(coalesce("name2", '')) = ANY (ARRAY['getränke', 'kaffee', 'tee', 'säfte', 'cocktails'])
-  OR lower(coalesce("name3", '')) = ANY (ARRAY['المشروبات', 'مشروبات'])
-  OR lower(coalesce("name4", '')) = ANY (ARRAY['içecekler', 'içecek'])
+  OR lower(coalesce("name1", '')) = ANY (ARRAY['drinks', 'coffee', 'tea', 'fresh juices', 'soft drinks', 'cocktails', 'milkshakes', 'smoothies', 'energy drinks', 'water', 'mineral water', 'sparkling water', 'still water', 'beer', 'beers', 'wine', 'wines', 'brandy', 'cognac', 'whisky', 'whiskey', 'spirits', 'liqueurs'])
+  OR lower(coalesce("name2", '')) = ANY (ARRAY['getränke', 'kaffee', 'tee', 'säfte', 'cocktails', 'wasser', 'mineralwasser', 'bier', 'weine', 'wein', 'cognac', 'whisky', 'spirituosen', 'liköre'])
+  OR lower(coalesce("name3", '')) = ANY (ARRAY['المشروبات', 'مشروبات', 'مياه', 'ماء', 'بيرة', 'نبيذ', 'كونياك', 'مشروبات روحية'])
+  OR lower(coalesce("name4", '')) = ANY (ARRAY['içecekler', 'içecek', 'su', 'maden suyu', 'bira', 'şarap', 'sarap', 'konyak', 'viski', 'likörler', 'likorler'])
     THEN 'DRINKS'::"MenuCategoryGroup"
 
   WHEN lower(coalesce("name", '')) = ANY (ARRAY[
