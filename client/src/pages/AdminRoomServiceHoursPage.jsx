@@ -64,7 +64,7 @@ export default function AdminRoomServiceHoursPage() {
   return (
     <main className="roomHoursPage">
       <div className="roomHoursShell">
-        <button type="button" className="roomHoursBack" onClick={() => navigate("/admin/home")}>← Nazad na admin</button>
+        <button type="button" className="roomHoursBack" onClick={() => navigate("/admin/home")}>← Vrati na admin dashboard</button>
         <header className="roomHoursHero">
           <div className="roomHoursKicker">Room Service</div>
           <h1>Radno vrijeme Room Service-a</h1>

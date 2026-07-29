@@ -538,6 +538,14 @@ export default function AdminMenuPage() {
             <button
               type="button"
               className="adminMenuBtn adminMenuBtnGhost"
+              onClick={() => nav("/admin/home")}
+            >
+              ← Vrati na admin dashboard
+            </button>
+
+            <button
+              type="button"
+              className="adminMenuBtn adminMenuBtnGhost"
               onClick={loadMenu}
               disabled={loading}
             >

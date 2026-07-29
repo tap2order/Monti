@@ -12,7 +12,10 @@ export default function RoomLanguagePage() {
   const [languageConfirmed, setLanguageConfirmed] = useState(
     () => searchParams.get("view") === "options"
   );
+  const [callingStaff, setCallingStaff] = useState(false);
+  const [callNotice, setCallNotice] = useState(null);
   const isRtl = selectedLang === "ar";
+  const api = import.meta.env.VITE_API_URL || "";
 
   const text = {
     bs: {
@@ -26,6 +29,11 @@ export default function RoomLanguagePage() {
       menuText: "Pregled hrane, pića i room service ponude.",
       services: "Hotelske usluge",
       servicesText: "Masaže, quad, wellness i ostale dodatne usluge.",
+      callStaff: "Pozovi osoblje",
+      callStaffText: "Pošaljite zahtjev osoblju ako vam je potrebna pomoć u sobi.",
+      callingStaff: "Pozivanje osoblja...",
+      staffCalled: "Osoblje je obaviješteno i uskoro će doći do vaše sobe.",
+      callError: "Poziv trenutno nije moguće poslati. Pokušajte ponovo.",
       back: "Nazad",
     },
     en: {
@@ -39,6 +47,11 @@ export default function RoomLanguagePage() {
       menuText: "Browse food, drinks and room service offer.",
       services: "Hotel services",
       servicesText: "Massages, quad, wellness and other additional services.",
+      callStaff: "Call staff",
+      callStaffText: "Send a request to staff if you need assistance in your room.",
+      callingStaff: "Calling staff...",
+      staffCalled: "Staff has been notified and will come to your room shortly.",
+      callError: "The request could not be sent. Please try again.",
       back: "Back",
     },
     de: {
@@ -52,6 +65,11 @@ export default function RoomLanguagePage() {
       menuText: "Speisen, Getränke und Room-Service-Angebot ansehen.",
       services: "Hoteldienstleistungen",
       servicesText: "Massagen, Quad, Wellness und weitere Zusatzleistungen.",
+      callStaff: "Personal rufen",
+      callStaffText: "Senden Sie eine Anfrage, wenn Sie Hilfe in Ihrem Zimmer benötigen.",
+      callingStaff: "Personal wird gerufen...",
+      staffCalled: "Das Personal wurde benachrichtigt und kommt in Kürze zu Ihrem Zimmer.",
+      callError: "Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
       back: "Zurück",
     },
     ar: {
@@ -65,6 +83,11 @@ export default function RoomLanguagePage() {
       menuText: "تصفح الطعام والمشروبات وخدمة الغرف.",
       services: "خدمات الفندق",
       servicesText: "المساج، الكواد، السبا والخدمات الإضافية الأخرى.",
+      callStaff: "استدعاء الموظفين",
+      callStaffText: "أرسل طلبًا إلى الموظفين إذا كنت بحاجة إلى مساعدة في غرفتك.",
+      callingStaff: "جارٍ استدعاء الموظفين...",
+      staffCalled: "تم إبلاغ الموظفين وسيصلون إلى غرفتك قريبًا.",
+      callError: "تعذر إرسال الطلب. يرجى المحاولة مرة أخرى.",
       back: "رجوع",
     },
     tr: {
@@ -78,6 +101,11 @@ export default function RoomLanguagePage() {
       menuText: "Yiyecek, içecek ve oda servisi seçeneklerini inceleyin.",
       services: "Otel hizmetleri",
       servicesText: "Masaj, quad, wellness ve diğer ek hizmetler.",
+      callStaff: "Personeli çağır",
+      callStaffText: "Odanızda yardıma ihtiyacınız varsa personele istek gönderin.",
+      callingStaff: "Personel çağrılıyor...",
+      staffCalled: "Personele haber verildi ve kısa süre içinde odanıza gelecek.",
+      callError: "İstek gönderilemedi. Lütfen tekrar deneyin.",
       back: "Geri",
     },
   };
@@ -99,6 +127,27 @@ export default function RoomLanguagePage() {
 
   const goToServices = () => {
     navigate(`/t/${tableId}/services?lang=${selectedLang}`);
+  };
+
+  const callStaff = async () => {
+    if (callingStaff) return;
+    setCallingStaff(true);
+    setCallNotice(null);
+
+    try {
+      const response = await fetch(`${api}/calls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type: "waiter" }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setCallNotice({ type: "success", text: t.staffCalled });
+    } catch {
+      setCallNotice({ type: "error", text: t.callError });
+    } finally {
+      setCallingStaff(false);
+    }
   };
 
   const goBackToLanguages = () => {
@@ -226,7 +275,25 @@ export default function RoomLanguagePage() {
             <span className="choiceOptionLabel">{t.services}</span>
             <span className="choiceOptionText">{t.servicesText}</span>
           </button>
+
+          <button
+            type="button"
+            className="choiceOption"
+            onClick={callStaff}
+            disabled={callingStaff}
+          >
+            <span className="choiceOptionLabel">
+              {callingStaff ? t.callingStaff : t.callStaff}
+            </span>
+            <span className="choiceOptionText">{t.callStaffText}</span>
+          </button>
         </div>
+
+        {callNotice && (
+          <div className={`choiceNotice choiceNotice--${callNotice.type}`} role="status">
+            {callNotice.text}
+          </div>
+        )}
 
         <div className="guestPoweredBy">
           Digital ordering powered by{" "}

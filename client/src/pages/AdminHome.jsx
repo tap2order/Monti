@@ -51,6 +51,31 @@ export default function AdminHome() {
             </div>
           </Link> */}
 
+          <Link to="/waiter" className="adminHomeCard is-featured">
+            <div className="adminHomeCardTop">
+              <div className="adminHomeIconWrap">
+                <span className="adminHomeIcon" aria-hidden="true">
+                  👥
+                </span>
+              </div>
+
+              <div className="adminHomeCardHeading">
+                <div className="adminHomeCardEyebrow">Osoblje</div>
+                <div className="adminHomeCardTitle">Dashboard za osoblje</div>
+              </div>
+            </div>
+
+            <div className="adminHomeCardDesc">
+              Pratite pozive gostiju te nove i preuzete Room Service narudžbe.
+            </div>
+
+            <div className="adminHomeCardFooter">
+              <span className="adminHomeCardArrow" aria-hidden="true">
+                →
+              </span>
+            </div>
+          </Link>
+
           <Link to="/admin/menu" className="adminHomeCard">
             <div className="adminHomeCardTop">
               <div className="adminHomeIconWrap">
@@ -113,26 +138,6 @@ export default function AdminHome() {
             </div>
             <div className="adminHomeCardDesc">Odredite raspored rada i privremeno zatvorite Room Service.</div>
             <div className="adminHomeCardFooter"><span className="adminHomeCardArrow" aria-hidden="true">→</span></div>
-          </Link>
-
-          <Link to="/waiter" className="adminHomeCard">
-            <div className="adminHomeCardTop">
-              <div className="adminHomeIconWrap">
-                <span className="adminHomeIcon" aria-hidden="true">
-                  👥
-                </span>
-              </div>
-
-              <div className="adminHomeCardHeading">
-                <div className="adminHomeCardTitle">Dashboard za osoblje</div>
-              </div>
-            </div>
-
-            <div className="adminHomeCardFooter">
-              <span className="adminHomeCardArrow" aria-hidden="true">
-                →
-              </span>
-            </div>
           </Link>
 
           {/* <Link to="/admin/waiters" className="adminHomeCard">

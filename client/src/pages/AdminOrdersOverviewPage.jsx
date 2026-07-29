@@ -333,7 +333,7 @@ export default function AdminOrdersOverviewPage() {
               className="ordersOverviewBtn ordersOverviewBtnGhost"
               onClick={() => nav("/admin/home")}
             >
-              Nazad
+              ← Vrati na admin dashboard
             </button>
 
             <button

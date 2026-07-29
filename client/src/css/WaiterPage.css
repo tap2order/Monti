@@ -32,6 +32,22 @@
   margin: 0 auto;
 }
 
+.wp-adminBack {
+  min-height: 44px;
+  margin-bottom: 12px;
+  padding: 0;
+  border: 0;
+  color: #93c5fd;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.wp-adminBack:hover {
+  color: #dbeafe;
+}
+
 .wp-top {
   display: flex;
   flex-direction: column;
