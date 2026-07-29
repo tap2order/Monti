@@ -22,7 +22,7 @@
   justify-content: center;
   padding: 20px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   background:
     radial-gradient(circle at top left, rgba(212, 166, 58, 0.08), transparent 26%),
     radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.08), transparent 24%),
@@ -316,33 +316,41 @@
 
 @media (max-width: 640px) {
   .choicePage {
-    /* Start at the top of the usable screen instead of vertically centering the card. */
     min-height: 100vh;
     min-height: 100svh;
     min-height: 100dvh;
     align-items: flex-start;
     justify-content: flex-start;
     padding:
-      max(12px, env(safe-area-inset-top))
+      max(20px, calc(env(safe-area-inset-top) + 18px))
       max(14px, env(safe-area-inset-right))
-      max(12px, env(safe-area-inset-bottom))
+      max(20px, calc(env(safe-area-inset-bottom) + 16px))
       max(14px, env(safe-area-inset-left));
   }
 
   .choiceCard {
-    padding: 14px;
+    padding: 20px 18px 22px;
     border-radius: 24px;
+  }
+
+  .choiceCard--languages {
+    padding-top: 22px;
+    padding-bottom: 24px;
+  }
+
+  .choiceCard--options {
+    padding-bottom: 24px;
   }
 
   .choiceTopRow {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 12px;
+    margin-bottom: 20px;
   }
 
   .choiceEyebrow {
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
 
   .choiceTitle {
@@ -351,8 +359,8 @@
 
   .choiceSubtitle {
     font-size: 14px;
-    line-height: 1.45;
-    margin-top: 6px;
+    line-height: 1.5;
+    margin-top: 8px;
   }
 
   .choiceLangSelect {
@@ -361,10 +369,10 @@
   }
 
   .choiceOption {
-    min-height: 76px;
+    min-height: 92px;
     border-radius: 18px;
-    padding: 12px 14px;
-    gap: 4px;
+    padding: 20px 16px;
+    gap: 6px;
   }
 
   .choiceOptionLabel {
@@ -374,12 +382,12 @@
 
   .choiceOptionText {
     font-size: 13px;
-    line-height: 1.45;
+    line-height: 1.5;
     overflow-wrap: anywhere;
   }
 
   .choiceGrid {
-    gap: 10px;
+    gap: 16px;
   }
 
   .choiceModal {
@@ -443,53 +451,96 @@
     min-width: 0;
     height: 44px;
     padding: 0 14px;
-    margin-bottom: 12px;
+    margin-bottom: 20px;
     border-radius: 14px;
     font-size: 15px;
   }
 
   .choicePage .guestPoweredBy {
-    margin-top: 12px;
+    margin-top: 20px;
     font-size: 12px;
-    line-height: 1.35;
+    line-height: 1.4;
   }
 }
 
-@media (max-width: 640px) and (max-height: 750px) {
+@media (max-width: 640px) and (max-height: 760px) {
   .choicePage {
-    padding-top: max(8px, env(safe-area-inset-top));
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-top: max(12px, calc(env(safe-area-inset-top) + 10px));
+    padding-bottom: max(12px, calc(env(safe-area-inset-bottom) + 10px));
   }
 
   .choiceCard {
-    padding-top: 12px;
-    padding-bottom: 12px;
+    padding-top: 16px;
+    padding-bottom: 18px;
+  }
+
+  .choiceCard--languages {
+    padding-top: 18px;
+    padding-bottom: 20px;
   }
 
   .choicePage .guestBackBtn {
-    margin-bottom: 10px;
+    margin-bottom: 14px;
   }
 
   .choiceTopRow {
-    margin-bottom: 10px;
+    margin-bottom: 14px;
   }
 
   .choiceSubtitle {
-    margin-top: 4px;
+    margin-top: 6px;
   }
 
   .choiceGrid {
-    gap: 8px;
+    gap: 12px;
   }
 
   .choiceOption {
-    min-height: 72px;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    min-height: 84px;
+    padding-top: 16px;
+    padding-bottom: 16px;
   }
 
   .choicePage .guestPoweredBy {
-    margin-top: 8px;
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 640px) and (min-height: 850px) {
+  .choicePage {
+    padding-top: max(24px, calc(env(safe-area-inset-top) + 22px));
+    padding-bottom: max(24px, calc(env(safe-area-inset-bottom) + 20px));
+  }
+
+  .choiceCard {
+    padding-top: 22px;
+    padding-bottom: 24px;
+  }
+
+  .choicePage .guestBackBtn {
+    margin-bottom: 22px;
+  }
+
+  .choiceTopRow {
+    margin-bottom: 22px;
+  }
+
+  .choiceSubtitle {
+    margin-top: 10px;
+  }
+
+  .choiceGrid {
+    gap: 18px;
+  }
+
+  .choiceOption {
+    min-height: 96px;
+    padding-top: 22px;
+    padding-bottom: 22px;
+  }
+
+  .choicePage .guestPoweredBy {
+    margin-top: 22px;
   }
 }
 

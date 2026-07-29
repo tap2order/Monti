@@ -221,7 +221,7 @@ export default function RoomLanguagePage() {
         <div className="choiceBgGlow choiceBgGlow1"></div>
         <div className="choiceBgGlow choiceBgGlow2"></div>
 
-        <div className="choiceCard" dir={isRtl ? "rtl" : "ltr"}>
+        <div className="choiceCard choiceCard--languages" dir={isRtl ? "rtl" : "ltr"}>
           <div className="choiceTopRow">
             <div className="choiceTopText">
               <p className="choiceEyebrow">{t.welcome}</p>
@@ -290,7 +290,7 @@ export default function RoomLanguagePage() {
       <div className="choiceBgGlow choiceBgGlow1"></div>
       <div className="choiceBgGlow choiceBgGlow2"></div>
 
-      <div className="choiceCard" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="choiceCard choiceCard--options" dir={isRtl ? "rtl" : "ltr"}>
         <button
           className="guestBackBtn"
           type="button"
