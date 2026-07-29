@@ -656,7 +656,7 @@ export default function TablePage() {
       <div className="tp-ambient" aria-hidden="true" />
       <div className="tp-shell">
         <button
-          className="guestBackBtn"
+          className={`guestBackBtn${selectedCategory ? " guestBackBtn--category" : ""}`}
           type="button"
           onClick={handleBack}
         >
