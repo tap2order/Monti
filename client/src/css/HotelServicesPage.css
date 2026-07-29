@@ -81,11 +81,6 @@
   transition: 0.18s ease;
 }
 
-.hotelServicesStaffBtn:hover {
-  border-color: rgba(212, 166, 58, 0.35);
-  transform: translateY(-1px);
-}
-
 .hotelServicesLangSelect {
   height: 46px;
   border-radius: 14px;
@@ -163,11 +158,18 @@
   gap: 8px;
 }
 
-.hotelServicesCategoryCard:hover {
-  transform: translateY(-2px);
-  border-color: rgba(212, 166, 58, 0.35);
-  background:
-    linear-gradient(180deg, rgba(212, 166, 58, 0.08), rgba(255, 255, 255, 0.03));
+@media (hover: hover) and (pointer: fine) {
+  .hotelServicesStaffBtn:hover {
+    border-color: rgba(212, 166, 58, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .hotelServicesCategoryCard:hover {
+    transform: translateY(-2px);
+    border-color: rgba(212, 166, 58, 0.35);
+    background:
+      linear-gradient(180deg, rgba(212, 166, 58, 0.08), rgba(255, 255, 255, 0.03));
+  }
 }
 
 .hotelServicesCategoryName {
@@ -298,11 +300,6 @@
   transition: 0.18s ease;
 }
 
-.hotelServicesModalBtn:hover {
-  border-color: rgba(212, 166, 58, 0.58);
-  background: rgba(212, 166, 58, 0.2);
-}
-
 .guestPoweredBy {
   margin-top: 22px;
   text-align: center;
@@ -316,10 +313,6 @@
   color: rgba(212, 166, 58, 0.78);
   text-decoration: none;
   font-weight: 800;
-}
-
-.guestPoweredBy a:hover {
-  color: #d4a63a;
 }
 
 .guestBackBtn {
@@ -339,9 +332,20 @@
   margin-bottom: 18px;
 }
 
-.guestBackBtn:hover {
-  border-color: rgba(212, 166, 58, 0.35);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .hotelServicesModalBtn:hover {
+    border-color: rgba(212, 166, 58, 0.58);
+    background: rgba(212, 166, 58, 0.2);
+  }
+
+  .guestPoweredBy a:hover {
+    color: #d4a63a;
+  }
+
+  .guestBackBtn:hover {
+    border-color: rgba(212, 166, 58, 0.35);
+    transform: translateY(-1px);
+  }
 }
 
 @media (max-width: 700px) {
