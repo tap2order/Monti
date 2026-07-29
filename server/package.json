@@ -11,6 +11,8 @@
     "test": "node --test",
     "start": "node index.js",
     "qrcodes": "node scripts/generateQRCodes.js",
+    "menu:dietary:check": "node -e \"process.env.DRY_RUN='true'; require('./scripts/update-menu-dietary-info.js')\"",
+    "menu:dietary:update": "node -e \"process.env.DRY_RUN='false'; require('./scripts/update-menu-dietary-info.js')\"",
     "dbpush": "npx prisma@6.19.2 db push",
     "migrate": "prisma migrate deploy"
   },
