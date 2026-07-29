@@ -27,6 +27,7 @@ const STAFF_CALL_COOLDOWN_MS = 3 * 60 * 1000;
 const ROOM_PENDING_TTL_SECONDS = Number(process.env.ROOM_PENDING_TTL_SECONDS || 5 * 60);
 const ROOM_VERIFIED_TTL_SECONDS = Number(process.env.ROOM_VERIFIED_TTL_SECONDS || 60 * 60);
 const ROOM_QR_ORIGIN = new URL(PUBLIC_CLIENT_URL).origin;
+const MENU_CATEGORY_GROUPS = new Set(["DRINKS", "FOOD", "DESSERTS", "KIDS", "OTHER"]);
 
 if (!ADMIN_USER || !ADMIN_PASS || !STAFF_PIN || !AUTH_SECRET) {
   console.error("Missing ADMIN_USER, ADMIN_PASS, STAFF_PIN or AUTH_SECRET environment variables.");
@@ -49,6 +50,13 @@ function safeEqual(left, right) {
   const a = Buffer.from(String(left));
   const b = Buffer.from(String(right));
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function menuCategoryGroup(value, { required = true } = {}) {
+  if (value === undefined && !required) return undefined;
+  if (typeof value !== "string") return null;
+  const group = value.trim().toUpperCase();
+  return MENU_CATEGORY_GROUPS.has(group) ? group : null;
 }
 
 function signToken(role) {
@@ -507,8 +515,9 @@ app.get("/api/public/menu", requireVerifiedRoomSession, async (req, res) => {
 app.post("/menu-category", requireAdmin, async (req, res) => {
   try {
     const name = text(req.body?.name, { required: true });
-    if (!name) return res.status(400).json({ error: "valid name is required" });
-    const created = await prisma.menuCategory.create({ data: { name, name1: optionalTranslation(req.body?.name1) || null, name2: optionalTranslation(req.body?.name2) || null, name3: optionalTranslation(req.body?.name3) || null, name4: optionalTranslation(req.body?.name4) || null } });
+    const group = menuCategoryGroup(req.body?.group);
+    if (!name || !group) return res.status(400).json({ error: "valid name and category group are required" });
+    const created = await prisma.menuCategory.create({ data: { name, group, name1: optionalTranslation(req.body?.name1) || null, name2: optionalTranslation(req.body?.name2) || null, name3: optionalTranslation(req.body?.name3) || null, name4: optionalTranslation(req.body?.name4) || null } });
     res.status(201).json(created);
   } catch (error) {
     if (error.code === "P2002") return res.status(409).json({ error: "Category already exists" });
@@ -520,6 +529,7 @@ app.put("/menu-category/:id", requireAdmin, async (req, res) => {
   try {
     const data = {};
     if (req.body?.name !== undefined) { const name = text(req.body.name, { required: true }); if (!name) return res.status(400).json({ error: "valid name is required" }); data.name = name; }
+    if (req.body?.group !== undefined) { const group = menuCategoryGroup(req.body.group); if (!group) return res.status(400).json({ error: "valid category group is required" }); data.group = group; }
     for (const field of ["name1", "name2", "name3", "name4"]) if (req.body?.[field] !== undefined) { const value = optionalTranslation(req.body[field]); if (value === null) return res.status(400).json({ error: `invalid ${field}` }); data[field] = value; }
     res.json(await prisma.menuCategory.update({ where: { id: String(req.params.id) }, data }));
   } catch (error) {

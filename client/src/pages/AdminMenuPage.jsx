@@ -9,7 +9,16 @@ const emptyCategoryForm = {
   name2: "",
   name3: "",
   name4: "",
+  group: "OTHER",
 };
+
+const categoryGroupOptions = [
+  { value: "DRINKS", label: "Piće" },
+  { value: "FOOD", label: "Hrana" },
+  { value: "DESSERTS", label: "Deserti" },
+  { value: "KIDS", label: "Dječiji meni" },
+  { value: "OTHER", label: "Ostalo" },
+];
 
 const emptyItemForm = {
   id: "",
@@ -271,6 +280,7 @@ export default function AdminMenuPage() {
       name2: category.name2 || "",
       name3: category.name3 || "",
       name4: category.name4 || "",
+      group: category.group || "OTHER",
     });
     setCategoryModalOpen(true);
     setCategoriesOpen(false);
@@ -338,6 +348,7 @@ export default function AdminMenuPage() {
           name2: categoryForm.name2.trim(),
           name3: categoryForm.name3.trim(),
           name4: categoryForm.name4.trim(),
+          group: categoryForm.group,
         }),
       });
 
@@ -374,6 +385,7 @@ export default function AdminMenuPage() {
           name2: categoryForm.name2.trim(),
           name3: categoryForm.name3.trim(),
           name4: categoryForm.name4.trim(),
+          group: categoryForm.group,
         }),
       });
 
@@ -800,6 +812,27 @@ export default function AdminMenuPage() {
                     }
                     placeholder="npr. Pića"
                   />
+                </div>
+
+                <div className="adminMenuField adminMenuFieldFull">
+                  <label className="adminMenuLabel">Grupa kategorije</label>
+                  <select
+                    className="adminMenuInput"
+                    value={categoryForm.group}
+                    onChange={(e) =>
+                      setCategoryForm((prev) => ({
+                        ...prev,
+                        group: e.target.value,
+                      }))
+                    }
+                    required
+                  >
+                    {categoryGroupOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="adminMenuFormGrid">

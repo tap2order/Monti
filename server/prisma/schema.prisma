@@ -14,6 +14,7 @@ model MenuCategory {
   name2     String?
   name3     String?
   name4     String?
+  group     MenuCategoryGroup @default(OTHER)
   sortOrder Int        @default(0)
   items     MenuItem[]
 }
@@ -137,4 +138,12 @@ enum OrderStatus {
 enum CallStatus {
   OPEN
   HANDLED
+}
+
+enum MenuCategoryGroup {
+  DRINKS
+  FOOD
+  DESSERTS
+  KIDS
+  OTHER
 }

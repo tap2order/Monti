@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { isRoomSessionError, lockRoomSession } from "../roomSession";
+import {
+  availableCategoryGroups,
+  filterCategoriesByGroup,
+} from "../menuCategoryGroups";
 import "../css/TablePage.css";
 
 const DIETARY_LEGEND = [
@@ -9,6 +13,14 @@ const DIETARY_LEGEND = [
   { code: "V", label: "VEGETARIAN" },
   { code: "N", label: "NUTS" },
 ];
+
+const MENU_FILTER_LABELS = {
+  bs: { ALL: "Sve", DRINKS: "Piće", FOOD: "Hrana", DESSERTS: "Deserti", KIDS: "Dječiji meni" },
+  en: { ALL: "All", DRINKS: "Drinks", FOOD: "Food", DESSERTS: "Desserts", KIDS: "Kids menu" },
+  de: { ALL: "Alle", DRINKS: "Getränke", FOOD: "Speisen", DESSERTS: "Desserts", KIDS: "Kindermenü" },
+  tr: { ALL: "Tümü", DRINKS: "İçecekler", FOOD: "Yemekler", DESSERTS: "Tatlılar", KIDS: "Çocuk menüsü" },
+  ar: { ALL: "الكل", DRINKS: "المشروبات", FOOD: "الطعام", DESSERTS: "الحلويات", KIDS: "قائمة الأطفال" },
+};
 
 function DietaryLegend({ inCategoryHeader = false }) {
   return (
@@ -34,6 +46,7 @@ export default function TablePage() {
   const api = import.meta.env.VITE_API_URL;
 
   const [menu, setMenu] = useState([]);
+  const [activeCategoryGroup, setActiveCategoryGroup] = useState("ALL");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -462,6 +475,18 @@ export default function TablePage() {
   }, [cart, cartStorageKey]);
 
   const categories = useMemo(() => menu, [menu]);
+  const visibleCategoryGroups = useMemo(
+    () => availableCategoryGroups(categories),
+    [categories]
+  );
+  const selectedCategoryGroup =
+    activeCategoryGroup !== "ALL" && !visibleCategoryGroups.includes(activeCategoryGroup)
+      ? "ALL"
+      : activeCategoryGroup;
+  const filteredCategories = useMemo(
+    () => filterCategoriesByGroup(categories, selectedCategoryGroup),
+    [categories, selectedCategoryGroup]
+  );
 
   const selectedCategoryObject = useMemo(() => {
     if (!selectedCategory) return null;
@@ -625,14 +650,6 @@ export default function TablePage() {
     }
   };
 
-  const accentFromName = (name) => {
-    const str = String(name || "");
-    let h = 0;
-    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
-    const hue = (h % 60) + 25;
-    return `hsl(${hue} 70% 55%)`;
-  };
-
   return (
     <div className="tp-page" dir={langCode === "ar" ? "rtl" : "ltr"}>
       <div className="tp-ambient" aria-hidden="true" />
@@ -673,7 +690,7 @@ export default function TablePage() {
           )}
         </div>
 
-        <div className="tp-card">
+        <div className={`tp-card${selectedCategory ? "" : " tp-card--categories"}`}>
           {selectedCategory && (
             <button className="tp-backButton" onClick={goBackToCategories}>
               ← {t.allCategories}
@@ -706,22 +723,37 @@ export default function TablePage() {
 
           {!loading && !selectedCategory && (
             <>
+              <div className="tp-categoryFilters" role="group" aria-label={t.menu}>
+                {["ALL", ...visibleCategoryGroups].map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    className={`tp-categoryFilter${selectedCategoryGroup === group ? " is-active" : ""}`}
+                    onClick={() => setActiveCategoryGroup(group)}
+                    aria-pressed={selectedCategoryGroup === group}
+                  >
+                    {MENU_FILTER_LABELS[langCode][group]}
+                  </button>
+                ))}
+              </div>
+
               <div className="tp-categoriesGrid">
-                {categories.map((cat) => {
+                {filteredCategories.map((cat) => {
                   const count = cat?.items?.length || 0;
-                  const accent = accentFromName(cat.name);
 
                   return (
                     <button
                       key={cat.id}
                       className="tp-categoryCard"
                       onClick={() => openCategory(cat.id)}
-                      style={{ "--tp-accent": accent }}
                     >
-                      <div className="tp-categoryName">{getCategoryName(cat)}</div>
-                      <div className="tp-categoryMeta">
-                        {count} {t.items}
-                      </div>
+                      <span className="tp-categoryCardContent">
+                        <span className="tp-categoryName">{getCategoryName(cat)}</span>
+                        <span className="tp-categoryMeta">
+                          {count} {t.items}
+                        </span>
+                      </span>
+                      <span className="tp-categoryArrow" aria-hidden="true">›</span>
                     </button>
                   );
                 })}
@@ -935,8 +967,6 @@ export default function TablePage() {
             </div>
           </div>
         )}
-
-        <div className="tp-footerHint">{t.footerHint}</div>
 
         <div className="guestPoweredBy">
           Digital ordering powered by{" "}

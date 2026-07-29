@@ -68,6 +68,30 @@ async function seedWaiters() {
 }
 
 async function seedMenu() {
+  const categoryGroups = {
+    Coffee: "DRINKS",
+    Tea: "DRINKS",
+    "Fresh Juices": "DRINKS",
+    "Soft Drinks": "DRINKS",
+    Cocktails: "DRINKS",
+    Milkshakes: "DRINKS",
+    Smoothies: "DRINKS",
+    "Energy Drinks": "DRINKS",
+    Desserts: "DESSERTS",
+    "Ice Cream": "DESSERTS",
+    Breakfast: "FOOD",
+    Sandwiches: "FOOD",
+    Burgers: "FOOD",
+    Pasta: "FOOD",
+    Salads: "FOOD",
+    Pizza: "FOOD",
+    Grill: "FOOD",
+    Seafood: "FOOD",
+    Soups: "FOOD",
+    Appetizers: "FOOD",
+    Wraps: "FOOD",
+    "Local Specialties": "FOOD",
+  };
   console.log("🌱 Seeding menu (upsert mode)...");
 
   const menu = [
@@ -298,7 +322,7 @@ async function seedMenu() {
     const category = await prisma.menuCategory.upsert({
       where: { name: cat.name },
       update: {},
-      create: { name: cat.name },
+      create: { name: cat.name, group: categoryGroups[cat.name] || "OTHER" },
     });
 
     // create items if missing
@@ -323,7 +347,7 @@ async function seedMenu() {
     const category = await prisma.menuCategory.upsert({
       where: { name: cat.name },
       update: {},
-      create: { name: cat.name },
+      create: { name: cat.name, group: categoryGroups[cat.name] || "OTHER" },
     });
 
     for (const it of cat.items) {
