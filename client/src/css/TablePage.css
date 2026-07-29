@@ -509,6 +509,10 @@
   margin: 16px 0 0;
 }
 
+.tp-badge--menuTotal {
+  margin-top: 14px;
+}
+
 /* Inputs */
 .tp-noteBlock {
   margin-top: 10px;
