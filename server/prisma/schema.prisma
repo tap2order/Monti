@@ -26,6 +26,7 @@ model MenuItem {
   name3      String?
   name4      String?
   imageUrl   String?
+  dietaryInfo String?
   price      Float
   currency   String       @default("BAM")
   sortOrder  Int          @default(0)
