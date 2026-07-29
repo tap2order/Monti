@@ -43,11 +43,8 @@ export default function TablePage() {
     try { return JSON.parse(sessionStorage.getItem(cartStorageKey) || "{}"); } catch { return {}; }
   });
   const [placing, setPlacing] = useState(false);
-  const [calling, setCalling] = useState("");
   const [placedMsg, setPlacedMsg] = useState("");
-  const [callMsg, setCallMsg] = useState("");
   const [orderPopupOpen, setOrderPopupOpen] = useState(false);
-  const [staffPopupOpen, setStaffPopupOpen] = useState(false);
   const [availability, setAvailability] = useState(null);
   const [sessionLocked, setSessionLocked] = useState(false);
   const orderKeyRef = useRef("");
@@ -390,10 +387,6 @@ export default function TablePage() {
       setOrderPopupOpen(false);
       return;
     }
-    if (staffPopupOpen) {
-      setStaffPopupOpen(false);
-      return;
-    }
     if (closedModalOpen) {
       closeClosedModal();
       return;
@@ -521,7 +514,6 @@ export default function TablePage() {
     }
     setPlacedMsg("");
     setErr("");
-    setCallMsg("");
 
     const translatedName = getItemName(it);
     showToast(`${t.added} “${translatedName}”`);
@@ -569,7 +561,6 @@ export default function TablePage() {
   const placeOrder = async () => {
     setErr("");
     setPlacedMsg("");
-    setCallMsg("");
 
     if (!hasItems || placing || sessionLocked) {
       setErr(t.emptyCart);
@@ -634,35 +625,6 @@ export default function TablePage() {
     }
   };
 
-  const callWaiter = async () => {
-    if (calling) return;
-    setErr("");
-    setCallMsg("");
-    setPlacedMsg("");
-
-    try {
-      setCalling("waiter");
-      const body = { type: "waiter" };
-
-      const res = await fetch(`${api}/calls`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      const text = await res.text();
-      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
-
-      setCallMsg(t.staffCalled);
-      setStaffPopupOpen(true);
-    } catch {
-      setErr(t.error);
-    } finally {
-      setCalling("");
-    }
-  };
-
   const accentFromName = (name) => {
     const str = String(name || "");
     let h = 0;
@@ -694,13 +656,6 @@ export default function TablePage() {
             </div>
           </div>
 
-          <div className="tp-headerActions tp-headerActions--vertical">
-            <button disabled={Boolean(calling)} onClick={callWaiter} className="tp-btn tp-btn--secondary">
-              {calling === "waiter" ? t.sending : t.callStaff}
-            </button>
-
-            {/* Language is selected only once on RoomLanguagePage */}
-          </div>
         </div>
 
         {toast.open && (
@@ -979,27 +934,6 @@ export default function TablePage() {
                     }`}
               </p>
               <button className="tp-btn tp-btn--checkout" onClick={closeClosedModal}>
-                {t.ok}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {staffPopupOpen && (
-          <div
-            className="tp-modalOverlay"
-            role="presentation"
-            onClick={() => setStaffPopupOpen(false)}
-          >
-            <div className="tp-modal" role="dialog" aria-modal="true" aria-label={t.staffNotified} onClick={(e) => e.stopPropagation()}>
-              <div className="tp-modalIcon">✓</div>
-              <h3 className="tp-modalTitle">{t.staffNotified}</h3>
-              <p className="tp-modalText">{callMsg}</p>
-
-              <button
-                className="tp-btn tp-btn--checkout"
-                onClick={() => setStaffPopupOpen(false)}
-              >
                 {t.ok}
               </button>
             </div>
