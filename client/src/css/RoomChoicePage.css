@@ -316,19 +316,33 @@
 
 @media (max-width: 640px) {
   .choicePage {
-    padding: 14px;
+    /* Start at the top of the usable screen instead of vertically centering the card. */
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(14px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
   }
 
   .choiceCard {
-    padding: 18px;
+    padding: 14px;
     border-radius: 24px;
   }
 
   .choiceTopRow {
     flex-direction: column;
     align-items: stretch;
-    gap: 14px;
-    margin-bottom: 18px;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .choiceEyebrow {
+    margin-bottom: 4px;
   }
 
   .choiceTitle {
@@ -337,6 +351,8 @@
 
   .choiceSubtitle {
     font-size: 14px;
+    line-height: 1.45;
+    margin-top: 6px;
   }
 
   .choiceLangSelect {
@@ -345,17 +361,25 @@
   }
 
   .choiceOption {
-    min-height: 88px;
+    min-height: 76px;
     border-radius: 18px;
-    padding: 16px;
+    padding: 12px 14px;
+    gap: 4px;
   }
 
   .choiceOptionLabel {
     font-size: 21px;
+    overflow-wrap: anywhere;
   }
 
   .choiceOptionText {
     font-size: 13px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .choiceGrid {
+    gap: 10px;
   }
 
   .choiceModal {
@@ -409,6 +433,64 @@
   cursor: pointer;
   transition: 0.18s ease;
   margin-bottom: 18px;
+}
+
+/* Scope these shared class names to the room-choice page so page-level button
+   styles used by the menu and services screens cannot affect this layout. */
+@media (max-width: 640px) {
+  .choicePage .guestBackBtn {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding: 0 14px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+    font-size: 15px;
+  }
+
+  .choicePage .guestPoweredBy {
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 640px) and (max-height: 750px) {
+  .choicePage {
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .choiceCard {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .choicePage .guestBackBtn {
+    margin-bottom: 10px;
+  }
+
+  .choiceTopRow {
+    margin-bottom: 10px;
+  }
+
+  .choiceSubtitle {
+    margin-top: 4px;
+  }
+
+  .choiceGrid {
+    gap: 8px;
+  }
+
+  .choiceOption {
+    min-height: 72px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .choicePage .guestPoweredBy {
+    margin-top: 8px;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
