@@ -196,6 +196,14 @@
   color: var(--wp-muted);
 }
 
+.wp-callMessage {
+  margin-top: 10px;
+  color: var(--wp-text);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .wp-items {
   margin-top: 12px;
   border-top: 1px solid rgba(71, 85, 105, 0.18);
