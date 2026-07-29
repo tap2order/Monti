@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { Utensils } from "lucide-react";
 import { isRoomSessionError, lockRoomSession } from "../roomSession";
 import {
   availableCategoryGroups,
@@ -662,7 +663,7 @@ export default function TablePage() {
           ← {t.back}
         </button>
 
-        <div className="tp-header">
+        <div className={`tp-header${selectedCategory ? " tp-header--category" : ""}`}>
           <div>
             <div className="tp-kicker">{t.roomService}</div>
             <h1 className="tp-h1">
@@ -690,7 +691,7 @@ export default function TablePage() {
           )}
         </div>
 
-        <div className={`tp-card${selectedCategory ? "" : " tp-card--categories"}`}>
+        <div className={`tp-card${selectedCategory ? " tp-card--category" : " tp-card--categories"}`}>
           {selectedCategory && (
             <button className="tp-backButton" onClick={goBackToCategories}>
               ← {t.allCategories}
@@ -773,8 +774,8 @@ export default function TablePage() {
                         {it.imageUrl ? (
                           <img src={it.imageUrl} alt={getItemName(it)} />
                         ) : (
-                          <span>
-                            {String(getItemName(it) || "?").charAt(0).toUpperCase()}
+                          <span className="tp-itemPlaceholder" aria-hidden="true">
+                            <Utensils size={30} strokeWidth={1.6} />
                           </span>
                         )}
                       </div>

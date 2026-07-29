@@ -166,6 +166,10 @@
   margin: 14px 0 16px;
 }
 
+.tp-alerts:empty {
+  display: none;
+}
+
 .tp-alert {
   border: 1px solid var(--tp-border);
   background: rgba(255, 255, 255, 0.025);
@@ -231,6 +235,59 @@
 .tp-card--categories .tp-cardHeader {
   padding: 0 2px 14px;
   border: 0;
+}
+
+.tp-header--category {
+  margin-top: 0;
+  padding: 2px 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.tp-header--category .tp-kicker {
+  display: none;
+}
+
+.tp-header--category .tp-h1 {
+  margin: 0 0 3px;
+  font-size: 25px;
+  line-height: 1.12;
+}
+
+.tp-header--category .tp-sub {
+  max-width: 42rem;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.tp-card--category {
+  margin-top: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.tp-card--category .tp-cardHeader {
+  display: block;
+  padding: 0 2px 12px;
+  border: 0;
+}
+
+.tp-card--category .tp-dietaryLegend {
+  justify-content: flex-start;
+  gap: 5px 12px;
+  margin: 10px 0 0;
+  padding: 9px 10px;
+  border-radius: 12px;
+}
+
+.tp-card--category .tp-dietaryLegendItem {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.03em;
 }
 
 .tp-categoryFilters {
@@ -387,13 +444,12 @@
 
 /* Back button */
 .tp-backButton {
-  position: sticky;
-  top: 12px;
-  z-index: 45;
-  width: calc(100% - 40px);
-  height: 46px;
-  margin: 14px 20px 0;
-  padding: 0 18px;
+  position: static;
+  width: min(100%, 220px);
+  min-height: 52px;
+  height: 52px;
+  margin: 0 0 12px;
+  padding: 0 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   background: rgba(8, 12, 22, 0.92);
@@ -419,17 +475,21 @@
 /* Menu items */
 .tp-menuList {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 0;
 }
 
 .tp-menuItem {
-  display: flex;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-areas:
+    "media content"
+    "media actions";
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-
-  padding: 18px;
+  column-gap: 16px;
+  row-gap: 12px;
+  min-height: 156px;
+  padding: 16px;
   border-radius: 18px;
   border: 1px solid var(--tp-border);
   background: linear-gradient(
@@ -454,11 +514,14 @@
 }
 
 .tp-itemLeft {
+  grid-area: content;
   min-width: 0;
-  flex: 1;
+  align-self: end;
 }
 
 .tp-itemMedia {
+  grid-area: media;
+  align-self: center;
   width: 96px;
   height: 96px;
   flex: 0 0 96px;
@@ -469,7 +532,8 @@
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
     rgba(255, 255, 255, 0.025);
-  display: flex;
+  display: grid;
+  place-items: center;
   align-items: center;
   justify-content: center;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
@@ -484,11 +548,12 @@
   object-fit: cover;
 }
 
-.tp-itemMedia span {
+.tp-itemPlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--tp-primary);
-  font-family: var(--tp-font-title);
-  font-size: 28px;
-  font-weight: 800;
+  opacity: 0.72;
 }
 
 .tp-itemName {
@@ -496,7 +561,7 @@
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.025em;
-  margin-bottom: 8px;
+  overflow-wrap: anywhere;
   color: #fffaf0;
 }
 
@@ -505,7 +570,7 @@
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin: 0;
 }
 
 .tp-itemTitleRow .tp-itemName {
@@ -523,18 +588,26 @@
 }
 
 .tp-itemRight {
+  grid-area: actions;
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
 }
 
 .tp-price {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: #fffaf0;
   white-space: nowrap;
+}
+
+.tp-itemRight .tp-btn--primary {
+  min-width: 112px;
+  min-height: 46px;
+  padding: 10px 16px;
 }
 
 .tp-dietaryLegend {
@@ -957,14 +1030,20 @@
   .tp-h2 {
     font-size: 22px;
   }
+
+  .tp-header--category {
+    align-items: flex-start;
+    padding: 2px 2px 0;
+  }
 }
 
 @media (max-width: 520px) {
   .tp-menuItem {
-    display: grid;
     grid-template-columns: 96px minmax(0, 1fr);
     align-items: start;
-    gap: 12px;
+    column-gap: 12px;
+    row-gap: 10px;
+    min-height: 150px;
   }
 
   .tp-itemMedia {
@@ -974,13 +1053,11 @@
   }
 
   .tp-itemLeft {
-    width: 100%;
+    width: auto;
   }
 
   .tp-itemRight {
-    grid-column: 1 / -1;
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
   }
 
   .tp-itemName {
@@ -1013,16 +1090,10 @@
     padding: 10px 16px;
   }
 
-  .tp-cardHeader {
-    padding: 18px 16px 14px;
-  }
-
-  .tp-menuList {
-    padding: 14px;
-  }
-
   .tp-backButton {
-    margin: 12px 16px 0;
+    min-height: 50px;
+    height: 50px;
+    margin-bottom: 10px;
   }
 }
 
@@ -1070,6 +1141,7 @@
 
   .tp-menuItem {
     grid-template-columns: 88px minmax(0, 1fr);
+    min-height: 148px;
   }
 
   .tp-itemMedia {
@@ -1078,6 +1150,10 @@
     flex-basis: 88px;
     padding: 0;
     border-radius: 14px;
+  }
+
+  .tp-itemRight .tp-btn--primary {
+    min-width: 104px;
   }
 
   .tp-itemMedia img {
