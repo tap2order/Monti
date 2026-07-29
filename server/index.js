@@ -43,7 +43,7 @@ const allowedOrigins = [...new Set([
   "http://localhost:5173",
   "https://demo.tap2order.ba",
 ])];
-const STAFF_AUTH_TTL_SECONDS = 8 * 60 * 60;
+const STAFF_AUTH_TTL_SECONDS = 7 * 24 * 60 * 60;
 const ADMIN_AUTH_TTL_SECONDS = 7 * 24 * 60 * 60;
 const rateBuckets = new Map();
 
@@ -77,7 +77,7 @@ function signToken(role) {
   return `${payload}.${signature}`;
 }
 
-async function sendAdminPush(payload) {
+async function sendPush(payload) {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !prisma.pushSubscription?.findMany) return;
   const subscriptions = await prisma.pushSubscription.findMany();
   await Promise.allSettled(subscriptions.map(async (subscription) => {
@@ -85,7 +85,10 @@ async function sendAdminPush(payload) {
       await webpush.sendNotification({
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-      }, JSON.stringify(payload), { TTL: 60 * 60, urgency: "high" });
+      }, JSON.stringify({
+        ...payload,
+        url: subscription.role === "staff" ? "/waiter" : payload.url,
+      }), { TTL: 60 * 60, urgency: "high" });
     } catch (error) {
       if ([404, 410].includes(error.statusCode)) {
         await prisma.pushSubscription.deleteMany({ where: { endpoint: subscription.endpoint } });
@@ -265,6 +268,12 @@ function requireStaffOrAdminAuth(req, res, next) {
   const role = bearerRole(req);
   if (!role || !["staff", "admin"].includes(role)) return res.status(401).json({ error: "staff auth required" });
   req.auth = { role };
+  next();
+}
+
+function requireStaff(req, res, next) {
+  if (bearerRole(req) !== "staff") return res.status(401).json({ error: "staff auth required" });
+  req.auth = { role: "staff" };
   next();
 }
 
@@ -630,7 +639,7 @@ app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), req
     const subtotal = menuItems.reduce((sum, item) => sum + item.price * requested.get(item.id).qty, 0);
     const order = await prisma.order.create({ data: { tableId: req.table.id, clientRequestId: key, status: "UNCLAIMED", subtotal, currency, items: { create: menuItems.map((item) => ({ itemId: item.id, name: item.name, price: item.price, ...requested.get(item.id) })) } }, include: { items: true } });
     try { io.to("staff").emit("order:new", order); } catch (notificationError) { console.error("order notification failed", notificationError); }
-    sendAdminPush({
+    sendPush({
       title: "Nova Room Service narudžba",
       body: `Soba ${req.table.id} · ${requested.size} stavki · ${subtotal.toFixed(2)} ${currency}`,
       url: "/admin/waiter",
@@ -689,7 +698,7 @@ app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requir
     }
     const call = await prisma.call.create({ data: { tableId: req.table.id, type, message: message || null, status: "OPEN" } });
     io.to("staff").emit("call:new", call);
-    sendAdminPush({
+    sendPush({
       title: call.type === "bill" ? "Gost traži račun" : "Gost poziva osoblje",
       body: `Soba ${call.tableId}${call.message ? ` · ${call.message}` : ""}`,
       url: "/admin/waiter",
@@ -714,12 +723,12 @@ app.patch("/calls/:callId/handle", requireStaffOrAdminAuth, async (req, res) => 
   } catch (error) { console.error("handle call failed", error); res.status(500).json({ error: "server error" }); }
 });
 
-app.use("/api/admin", requireAdmin);
-app.get("/api/admin/push/public-key", (_req, res) => {
+function pushPublicKey(_req, res) {
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return res.status(503).json({ error: "Push notifications are not configured" });
   res.json({ publicKey: VAPID_PUBLIC_KEY });
-});
-app.post("/api/admin/push/subscriptions", async (req, res) => {
+}
+
+async function savePushSubscription(req, res) {
   try {
     const endpoint = text(req.body?.endpoint, { required: true, max: 2048 });
     const p256dh = text(req.body?.keys?.p256dh, { required: true, max: 512 });
@@ -727,21 +736,31 @@ app.post("/api/admin/push/subscriptions", async (req, res) => {
     if (!endpoint || !p256dh || !auth || !/^https:\/\//i.test(endpoint)) return res.status(400).json({ error: "Invalid push subscription" });
     await prisma.pushSubscription.upsert({
       where: { endpoint },
-      create: { endpoint, p256dh, auth, userAgent: text(req.headers["user-agent"], { max: 500 }) || null },
-      update: { p256dh, auth, userAgent: text(req.headers["user-agent"], { max: 500 }) || null },
+      create: { endpoint, p256dh, auth, role: req.auth.role, userAgent: text(req.headers["user-agent"], { max: 500 }) || null },
+      update: { p256dh, auth, role: req.auth.role, userAgent: text(req.headers["user-agent"], { max: 500 }) || null },
     });
     res.status(201).json({ ok: true });
   } catch (error) {
     console.error("save push subscription failed", error);
     res.status(500).json({ error: "Unable to enable push notifications" });
   }
-});
-app.delete("/api/admin/push/subscriptions", async (req, res) => {
+}
+
+async function deletePushSubscription(req, res) {
   const endpoint = text(req.body?.endpoint, { required: true, max: 2048 });
   if (!endpoint) return res.status(400).json({ error: "Invalid push subscription" });
   await prisma.pushSubscription.deleteMany({ where: { endpoint } });
   res.json({ ok: true });
-});
+}
+
+app.get("/api/staff/push/public-key", requireStaff, pushPublicKey);
+app.post("/api/staff/push/subscriptions", requireStaff, savePushSubscription);
+app.delete("/api/staff/push/subscriptions", requireStaff, deletePushSubscription);
+
+app.use("/api/admin", requireAdmin);
+app.get("/api/admin/push/public-key", pushPublicKey);
+app.post("/api/admin/push/subscriptions", savePushSubscription);
+app.delete("/api/admin/push/subscriptions", deletePushSubscription);
 app.get("/api/admin/tables", async (req, res) => {
   try { res.json(await prisma.table.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, token: true, isActive: true, createdAt: true } })); }
   catch (error) { console.error("list tables failed", error); res.status(500).json({ error: "Unable to load tables" }); }

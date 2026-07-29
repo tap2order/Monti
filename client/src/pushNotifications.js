@@ -19,13 +19,19 @@ export async function getPushState() {
   return subscription ? "enabled" : "disabled";
 }
 
-export async function enableAdminPush(api) {
+async function enablePush(api, path, authorization) {
   if (!pushIsSupported()) throw new Error("Ovaj browser ne podržava push notifikacije.");
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Dozvola za notifikacije nije odobrena.");
 
   const registration = await navigator.serviceWorker.register("/push-service-worker.js");
-  const keyResponse = await adminFetch(`${api}/api/admin/push/public-key`);
+  const request = authorization
+    ? (url, options = {}) => fetch(url, {
+        ...options,
+        headers: { ...(options.headers || {}), Authorization: authorization },
+      })
+    : adminFetch;
+  const keyResponse = await request(`${api}${path}/public-key`);
   if (!keyResponse.ok) throw new Error("Push notifikacije nisu podešene na serveru.");
   const { publicKey } = await keyResponse.json();
   let subscription = await registration.pushManager.getSubscription();
@@ -36,7 +42,7 @@ export async function enableAdminPush(api) {
     });
   }
 
-  const response = await adminFetch(`${api}/api/admin/push/subscriptions`, {
+  const response = await request(`${api}${path}/subscriptions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(subscription.toJSON()),
@@ -44,15 +50,37 @@ export async function enableAdminPush(api) {
   if (!response.ok) throw new Error("Uređaj nije moguće registrovati za notifikacije.");
 }
 
-export async function disableAdminPush(api) {
+async function disablePush(api, path, authorization) {
   if (!pushIsSupported()) return;
   const registration = await navigator.serviceWorker.getRegistration("/push-service-worker.js");
   const subscription = await registration?.pushManager.getSubscription();
   if (!subscription) return;
-  await adminFetch(`${api}/api/admin/push/subscriptions`, {
+  const request = authorization
+    ? (url, options = {}) => fetch(url, {
+        ...options,
+        headers: { ...(options.headers || {}), Authorization: authorization },
+      })
+    : adminFetch;
+  await request(`${api}${path}/subscriptions`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endpoint: subscription.endpoint }),
   });
   await subscription.unsubscribe();
+}
+
+export function enableAdminPush(api) {
+  return enablePush(api, "/api/admin/push");
+}
+
+export function disableAdminPush(api) {
+  return disablePush(api, "/api/admin/push");
+}
+
+export function enableStaffPush(api, token) {
+  return enablePush(api, "/api/staff/push", `Bearer ${token}`);
+}
+
+export function disableStaffPush(api, token) {
+  return disablePush(api, "/api/staff/push", `Bearer ${token}`);
 }

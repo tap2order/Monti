@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import "../css/WaiterPage.css";
 import { clearAdminAuth, getAdminToken } from "../adminAuth";
 import { clearStaffToken, getStaffToken, setStaffToken } from "../staffAuth";
+import { disableStaffPush, enableStaffPush, getPushState } from "../pushNotifications";
 
 function responseError(response, fallback) {
   return response.json().then((data) => data?.error || fallback).catch(() => fallback);
@@ -16,6 +17,8 @@ export default function WaiterPage({ accessMode = "staff" }) {
   const [token, setToken] = useState(() => isAdmin ? getAdminToken() : getStaffToken());
   const [pin, setPin] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+  const [pushState, setPushState] = useState("loading");
+  const [pushMessage, setPushMessage] = useState("");
   const [orders, setOrders] = useState([]);
   const [calls, setCalls] = useState([]);
   const [claimedOrders, setClaimedOrders] = useState([]);
@@ -35,6 +38,7 @@ export default function WaiterPage({ accessMode = "staff" }) {
       clearAdminAuth();
       navigate("/admin", { replace: true });
     } else {
+      disableStaffPush(api, token).catch(() => {});
       clearStaffToken();
       setToken("");
       setPin("");
@@ -42,7 +46,12 @@ export default function WaiterPage({ accessMode = "staff" }) {
     clearDashboard();
   }
 
-  function logoutStaff() {
+  async function logoutStaff() {
+    try {
+      await disableStaffPush(api, token);
+    } catch {
+      // Logout must still succeed if the push service is temporarily unavailable.
+    }
     clearStaffToken();
     setToken("");
     setPin("");
@@ -70,6 +79,26 @@ export default function WaiterPage({ accessMode = "staff" }) {
       setError(err.message || "Prijava nije uspjela.");
     } finally {
       setLoginBusy(false);
+    }
+  }
+
+  async function toggleStaffPush() {
+    setPushState("loading");
+    setPushMessage("");
+    try {
+      const enabled = await getPushState() === "enabled";
+      if (enabled) {
+        await disableStaffPush(api, token);
+        setPushState("disabled");
+        setPushMessage("Notifikacije su isključene na ovom uređaju.");
+      } else {
+        await enableStaffPush(api, token);
+        setPushState("enabled");
+        setPushMessage("Notifikacije su uključene na ovom uređaju.");
+      }
+    } catch (err) {
+      setPushState(await getPushState().catch(() => "unsupported"));
+      setPushMessage(err.message || "Notifikacije nije moguće uključiti.");
     }
   }
 
@@ -134,6 +163,16 @@ export default function WaiterPage({ accessMode = "staff" }) {
     // The authenticated token is the lifecycle boundary for this socket.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, isAdmin, navigate, token]);
+
+  useEffect(() => {
+    if (!token || isAdmin) return;
+    getPushState()
+      .then(async (state) => {
+        if (state === "enabled") await enableStaffPush(api, token);
+        setPushState(state);
+      })
+      .catch(() => setPushState("unsupported"));
+  }, [api, isAdmin, token]);
 
   async function action(path, method, id) {
     setBusyId(id);
@@ -230,8 +269,22 @@ export default function WaiterPage({ accessMode = "staff" }) {
             <h1 className="wp-title">Dashboard osoblja</h1>
             <div className="wp-meta">{isAdmin ? "Admin pristup" : "Konobarski pristup"}</div>
           </div>
-          {!isAdmin && <button className="wp-btn wp-btn--ghost" onClick={logoutStaff}>Odjava</button>}
+          {!isAdmin && (
+            <div className="wp-staffActions">
+              <button
+                className={`wp-btn ${pushState === "enabled" ? "wp-btn--success" : "wp-btn--primary"}`}
+                onClick={toggleStaffPush}
+                disabled={pushState === "loading" || pushState === "unsupported" || pushState === "denied"}
+              >
+                {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : "Uključi notifikacije"}
+              </button>
+              <button className="wp-btn wp-btn--ghost" onClick={logoutStaff}>Odjava</button>
+            </div>
+          )}
         </header>
+        {!isAdmin && pushState === "denied" && <div className="wp-alert wp-alert--error">Notifikacije su blokirane u postavkama browsera.</div>}
+        {!isAdmin && pushState === "unsupported" && <div className="wp-alert wp-alert--error">Ovaj browser ne podržava push notifikacije.</div>}
+        {!isAdmin && pushMessage && <div className="wp-alert">{pushMessage}</div>}
         {error && <div className="wp-alert wp-alert--error">{error}</div>}
         {loading ? (
           <div className="wp-empty">Učitavanje…</div>

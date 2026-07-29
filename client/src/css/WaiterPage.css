@@ -152,6 +152,12 @@
   gap: 12px;
 }
 
+.wp-staffActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .wp-alert {
   margin: 14px 0 0;
   border: 1px solid var(--wp-border);
@@ -395,6 +401,11 @@
 }
 
 @media (max-width: 640px) {
+  .wp-staffActions,
+  .wp-staffActions .wp-btn {
+    width: 100%;
+  }
+
   .wp-cardTop {
     flex-direction: column;
     align-items: stretch;
