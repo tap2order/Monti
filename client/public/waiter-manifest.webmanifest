@@ -1,0 +1,19 @@
+{
+  "id": "/waiter",
+  "name": "Tap2Order Monti Staff",
+  "short_name": "Monti Staff",
+  "description": "Monti Hotel dashboard za osoblje",
+  "start_url": "/waiter",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08101d",
+  "theme_color": "#08101d",
+  "icons": [
+    {
+      "src": "/monti-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
