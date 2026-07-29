@@ -3,15 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/monti-logo.png" />
-    <link
-      rel="manifest"
-      href="/manifest.webmanifest"
-      id="app-manifest"
-    />
     <script>
-      if (window.location.pathname === "/waiter") {
-        document.getElementById("app-manifest").href = "/waiter-manifest.webmanifest";
-      }
+      const manifest = document.createElement("link");
+      manifest.rel = "manifest";
+      manifest.href = window.location.pathname === "/waiter"
+        ? "/waiter-manifest.json"
+        : "/admin-manifest.json";
+      document.head.appendChild(manifest);
     </script>
     <meta name="theme-color" content="#08101d" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
