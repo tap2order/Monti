@@ -216,6 +216,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
+  overflow-y: auto;
   background: rgba(4, 7, 13, 0.78);
   backdrop-filter: blur(8px);
 }
@@ -227,6 +228,7 @@
   background: #0c111c;
   box-shadow: var(--shadow-main);
   padding: 24px;
+  transition: transform 160ms ease;
 }
 
 .choiceModal h2 {
@@ -257,6 +259,7 @@
   color: var(--text-main);
   padding: 14px;
   font: inherit;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -363,6 +366,15 @@
   .choiceModalActions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .choiceModalOverlay--keyboard {
+    padding: 10px;
+  }
+
+  .choiceModalOverlay--keyboard .choiceModal {
+    transform: scale(0.9);
+    transform-origin: center;
   }
 }
 

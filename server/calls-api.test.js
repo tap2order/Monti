@@ -23,6 +23,7 @@ const fakePrisma = {
   },
   call: {
     create: async ({ data }) => { const call = { id: `call-${calls.length + 1}`, ...data, createdAt: new Date(), handledAt: null, handledById: null }; calls.push(call); return call; },
+    findFirst: async ({ where }) => calls.find((call) => call.tableId === where.tableId && call.type === where.type && call.createdAt >= where.createdAt.gte) || null,
     findMany: async ({ where }) => calls.filter((call) => call.status === where.status),
     findUnique: async ({ where }) => calls.find((call) => call.id === where.id) || null,
     updateMany: async ({ where, data }) => { const call = calls.find((item) => item.id === where.id && item.status === where.status); if (!call) return { count: 0 }; Object.assign(call, data); return { count: 1 }; },
@@ -56,4 +57,12 @@ test("staff token is required to list and handle calls", async () => {
   const handled = await request("/calls/call-1/handle", { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
   assert.equal(handled.status, 200);
   assert.equal((await handled.json()).status, "HANDLED");
+});
+test("a room can call staff only once every three minutes", async () => {
+  const cookie = await roomCookie();
+  const first = await request("/calls", { method: "POST", headers: { Cookie: cookie }, body: { type: "waiter", message: "Molim pomoć." } });
+  assert.equal(first.status, 201);
+  const second = await request("/calls", { method: "POST", headers: { Cookie: cookie }, body: { type: "waiter", message: "Molim ponovo pomoć." } });
+  assert.equal(second.status, 429);
+  assert.equal((await second.json()).code, "STAFF_CALL_COOLDOWN");
 });

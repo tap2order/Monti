@@ -16,6 +16,7 @@ export default function RoomLanguagePage() {
   const [callModalOpen, setCallModalOpen] = useState(false);
   const [callMessage, setCallMessage] = useState("");
   const [callError, setCallError] = useState("");
+  const [callMessageFocused, setCallMessageFocused] = useState(false);
   const [callNotice, setCallNotice] = useState(null);
   const isRtl = selectedLang === "ar";
   const api = import.meta.env.VITE_API_URL || "";
@@ -41,6 +42,7 @@ export default function RoomLanguagePage() {
       send: "Pošalji zahtjev",
       cancel: "Odustani",
       messageRequired: "Napišite poruku od najmanje 3 znaka.",
+      callCooldown: "Osoblje možete pozvati jednom svake tri minute.",
       staffCalled: "Osoblje je obaviješteno i uskoro će doći do vaše sobe.",
       callError: "Poziv trenutno nije moguće poslati. Pokušajte ponovo.",
       back: "Nazad",
@@ -65,6 +67,7 @@ export default function RoomLanguagePage() {
       send: "Send request",
       cancel: "Cancel",
       messageRequired: "Enter a message with at least 3 characters.",
+      callCooldown: "You can call staff once every three minutes.",
       staffCalled: "Staff has been notified and will come to your room shortly.",
       callError: "The request could not be sent. Please try again.",
       back: "Back",
@@ -89,6 +92,7 @@ export default function RoomLanguagePage() {
       send: "Anfrage senden",
       cancel: "Abbrechen",
       messageRequired: "Geben Sie eine Nachricht mit mindestens 3 Zeichen ein.",
+      callCooldown: "Sie können das Personal einmal alle drei Minuten rufen.",
       staffCalled: "Das Personal wurde benachrichtigt und kommt in Kürze zu Ihrem Zimmer.",
       callError: "Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
       back: "Zurück",
@@ -113,6 +117,7 @@ export default function RoomLanguagePage() {
       send: "إرسال الطلب",
       cancel: "إلغاء",
       messageRequired: "اكتب رسالة لا تقل عن 3 أحرف.",
+      callCooldown: "يمكنك استدعاء الموظفين مرة واحدة كل ثلاث دقائق.",
       staffCalled: "تم إبلاغ الموظفين وسيصلون إلى غرفتك قريبًا.",
       callError: "تعذر إرسال الطلب. يرجى المحاولة مرة أخرى.",
       back: "رجوع",
@@ -137,6 +142,7 @@ export default function RoomLanguagePage() {
       send: "Talep gönder",
       cancel: "Vazgeç",
       messageRequired: "En az 3 karakterlik bir mesaj yazın.",
+      callCooldown: "Personeli üç dakikada bir çağırabilirsiniz.",
       staffCalled: "Personele haber verildi ve kısa süre içinde odanıza gelecek.",
       callError: "İstek gönderilemedi. Lütfen tekrar deneyin.",
       back: "Geri",
@@ -165,6 +171,7 @@ export default function RoomLanguagePage() {
   const openCallModal = () => {
     setCallNotice(null);
     setCallError("");
+    setCallMessageFocused(false);
     setCallModalOpen(true);
   };
 
@@ -186,12 +193,16 @@ export default function RoomLanguagePage() {
         credentials: "include",
         body: JSON.stringify({ type: "waiter", message }),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        const responseBody = await response.json().catch(() => null);
+        throw new Error(responseBody?.code || `HTTP ${response.status}`);
+      }
       setCallModalOpen(false);
       setCallMessage("");
+      setCallMessageFocused(false);
       setCallNotice({ type: "success", text: t.staffCalled });
-    } catch {
-      setCallError(t.callError);
+    } catch (error) {
+      setCallError(error.message === "STAFF_CALL_COOLDOWN" ? t.callCooldown : t.callError);
     } finally {
       setCallingStaff(false);
     }
@@ -342,18 +353,19 @@ export default function RoomLanguagePage() {
         )}
 
         {callModalOpen && (
-          <div className="choiceModalOverlay" role="presentation">
+          <div className={`choiceModalOverlay${callMessageFocused ? " choiceModalOverlay--keyboard" : ""}`} role="presentation">
             <form className="choiceModal" onSubmit={callStaff} role="dialog" aria-modal="true" aria-labelledby="call-staff-title">
               <h2 id="call-staff-title">{t.callModalTitle}</h2>
               <p>{t.callModalText}</p>
               <label className="choiceModalField">
                 <span className="srOnly">{t.callModalTitle}</span>
                 <textarea
-                  autoFocus
                   value={callMessage}
                   maxLength={500}
                   placeholder={t.callPlaceholder}
                   disabled={callingStaff}
+                  onFocus={() => setCallMessageFocused(true)}
+                  onBlur={() => setCallMessageFocused(false)}
                   onChange={(event) => {
                     setCallMessage(event.target.value);
                     setCallError("");
@@ -363,7 +375,7 @@ export default function RoomLanguagePage() {
               </label>
               {callError && <div className="choiceNotice choiceNotice--error" role="alert">{callError}</div>}
               <div className="choiceModalActions">
-                <button type="button" className="choiceModalCancel" disabled={callingStaff} onClick={() => setCallModalOpen(false)}>{t.cancel}</button>
+                <button type="button" className="choiceModalCancel" disabled={callingStaff} onClick={() => { setCallMessageFocused(false); setCallModalOpen(false); }}>{t.cancel}</button>
                 <button type="submit" className="choiceModalSend" disabled={callingStaff}>{callingStaff ? t.callingStaff : t.send}</button>
               </div>
             </form>
