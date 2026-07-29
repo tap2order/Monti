@@ -10,9 +10,12 @@ const DIETARY_LEGEND = [
   { code: "N", label: "NUTS" },
 ];
 
-function DietaryLegend() {
+function DietaryLegend({ inCategoryHeader = false }) {
   return (
-    <aside className="tp-dietaryLegend" aria-label="Dietary information">
+    <aside
+      className={`tp-dietaryLegend${inCategoryHeader ? " tp-dietaryLegend--categoryHeader" : ""}`}
+      aria-label="Dietary information"
+    >
       {DIETARY_LEGEND.map(({ code, label }) => (
         <div key={code} className="tp-dietaryLegendItem">
           <span className="tp-dietaryLegendCode">{code}</span>
@@ -472,6 +475,14 @@ export default function TablePage() {
     return menu.find((c) => c.id === selectedCategory) || null;
   }, [menu, selectedCategory]);
 
+  useEffect(() => {
+    if (!selectedCategory) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedCategory]);
+
   const itemsForSelected = useMemo(() => {
     if (!selectedCategory) return [];
     const cat = menu.find((c) => c.id === selectedCategory);
@@ -721,6 +732,7 @@ export default function TablePage() {
                 <h2 className="tp-h2" style={{ marginTop: 6 }}>
                   {getCategoryName(selectedCategoryObject)}
                 </h2>
+                <DietaryLegend inCategoryHeader />
               </div>
             ) : (
               <>
@@ -796,11 +808,6 @@ export default function TablePage() {
                             </span>
                           )}
                         </div>
-                        <div className="tp-itemMeta">
-                          <span className="tp-metaPill">
-                            {getCategoryName(selectedCategoryObject)}
-                          </span>
-                        </div>
                       </div>
 
                       <div className="tp-itemRight">
@@ -817,7 +824,6 @@ export default function TablePage() {
                   );
                 })}
               </div>
-              <DietaryLegend />
             </>
           )}
         </div>

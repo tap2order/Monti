@@ -459,21 +459,6 @@
   unicode-bidi: isolate;
 }
 
-.tp-itemMeta {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.tp-metaPill {
-  font-size: 12px;
-  color: var(--tp-muted);
-  border: 1px solid var(--tp-border);
-  padding: 6px 11px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
 .tp-itemRight {
   display: flex;
   align-items: center;
@@ -517,6 +502,11 @@
 .tp-dietaryLegendCode {
   color: var(--tp-primary);
   font-weight: 800;
+}
+
+.tp-dietaryLegend--categoryHeader {
+  justify-content: flex-start;
+  margin: 16px 0 0;
 }
 
 /* Inputs */
@@ -945,6 +935,10 @@
 
   .tp-dietaryLegendItem {
     white-space: normal;
+  }
+
+  .tp-dietaryLegend--categoryHeader {
+    margin: 14px 0 0;
   }
 
   .tp-price {
