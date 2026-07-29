@@ -293,14 +293,16 @@
   box-shadow: var(--tp-shadow-soft);
 }
 
-.tp-categoryCard:hover {
-  transform: translateY(-2px);
-  border-color: var(--tp-border-strong);
-  background: linear-gradient(
-    180deg,
-    rgba(212, 175, 55, 0.08),
-    rgba(255, 255, 255, 0.02)
-  );
+@media (hover: hover) and (pointer: fine) {
+  .tp-categoryCard:hover {
+    transform: translateY(-2px);
+    border-color: var(--tp-border-strong);
+    background: linear-gradient(
+      180deg,
+      rgba(212, 175, 55, 0.08),
+      rgba(255, 255, 255, 0.02)
+    );
+  }
 }
 
 .tp-categoryTop,
@@ -1107,10 +1109,12 @@
   transition: all 0.2s ease;
 }
 
-/* Hover effect */
-.tp-langSelect:hover {
-  border-color: #3b82f6;
-  background: #111827;
+/* Hover effect only on devices with a real pointer. */
+@media (hover: hover) and (pointer: fine) {
+  .tp-langSelect:hover {
+    border-color: #3b82f6;
+    background: #111827;
+  }
 }
 
 /* Focus effect */
