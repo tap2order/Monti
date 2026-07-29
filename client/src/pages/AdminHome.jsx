@@ -89,7 +89,7 @@ export default function AdminHome() {
             </div>
           </Link> */}
 
-          <Link to="/waiter" className="adminHomeCard is-featured">
+          <Link to="/admin/waiter" className="adminHomeCard is-featured">
             <div className="adminHomeCardTop">
               <div className="adminHomeIconWrap">
                 <span className="adminHomeIcon" aria-hidden="true">

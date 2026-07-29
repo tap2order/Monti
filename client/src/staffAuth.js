@@ -13,6 +13,11 @@ export function clearStaffToken() {
   sessionStorage.removeItem(KEY);
 }
 
+export function getStaffAuth() {
+  const token = getStaffToken();
+  return token ? `Bearer ${token}` : "";
+}
+
 export function staffHeaders(headers = {}) {
   const token = getStaffToken();
   return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;

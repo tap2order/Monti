@@ -28,7 +28,8 @@ export default function App() {
         <Route path="menu" element={<TablePage />} />
         <Route path="services" element={<HotelServicesPage />} />
       </Route>
-      <Route path="/waiter" element={<WaiterPage />} />
+      <Route path="/waiter" element={<WaiterPage accessMode="staff" />} />
+      <Route path="/admin/waiter" element={<WaiterPage accessMode="admin" />} />
       <Route path="/admin/tables" element={<TablesDemoPage />} />
       <Route path="/admin/home" element={<AdminHome />} />
       <Route path="/admin" element={<AdminLogin />} />

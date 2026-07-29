@@ -633,7 +633,7 @@ app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), req
     sendAdminPush({
       title: "Nova Room Service narudžba",
       body: `Soba ${req.table.id} · ${requested.size} stavki · ${subtotal.toFixed(2)} ${currency}`,
-      url: "/waiter",
+      url: "/admin/waiter",
       tag: `order-${order.id}`,
     }).catch((notificationError) => console.error("order push failed", notificationError));
     res.status(201).json(order);
@@ -692,7 +692,7 @@ app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requir
     sendAdminPush({
       title: call.type === "bill" ? "Gost traži račun" : "Gost poziva osoblje",
       body: `Soba ${call.tableId}${call.message ? ` · ${call.message}` : ""}`,
-      url: "/waiter",
+      url: "/admin/waiter",
       tag: `call-${call.id}`,
     }).catch((notificationError) => console.error("call push failed", notificationError));
     res.status(201).json(call);
