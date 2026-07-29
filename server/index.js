@@ -23,6 +23,7 @@ const STAFF_PIN = process.env.STAFF_PIN;
 const AUTH_SECRET = process.env.AUTH_SECRET;
 const CALL_MESSAGE_MIN_LENGTH = 3;
 const CALL_MESSAGE_MAX_LENGTH = 500;
+const STAFF_CALL_COOLDOWN_MS = 3 * 60 * 1000;
 const ROOM_PENDING_TTL_SECONDS = Number(process.env.ROOM_PENDING_TTL_SECONDS || 5 * 60);
 const ROOM_VERIFIED_TTL_SECONDS = Number(process.env.ROOM_VERIFIED_TTL_SECONDS || 60 * 60);
 const ROOM_QR_ORIGIN = new URL(PUBLIC_CLIENT_URL).origin;
@@ -628,9 +629,22 @@ app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requir
     if (type === "waiter" && (message.length < CALL_MESSAGE_MIN_LENGTH || message.length > CALL_MESSAGE_MAX_LENGTH)) {
       return res.status(400).json({ error: "message must contain between 3 and 500 characters" });
     }
+    const now = Date.now();
+    const cooldownStart = new Date(now - STAFF_CALL_COOLDOWN_MS);
+    const recentCall = type === "waiter"
+      ? await prisma.call.findFirst({ where: { tableId: req.table.id, type, createdAt: { gte: cooldownStart } }, orderBy: { createdAt: "desc" } })
+      : null;
+    const recentCallUntil = recentCall ? new Date(recentCall.createdAt).getTime() + STAFF_CALL_COOLDOWN_MS : 0;
+    if (recentCallUntil > now) {
+      const retryAfter = Math.ceil((recentCallUntil - now) / 1000);
+      res.setHeader("Retry-After", retryAfter);
+      return res.status(429).json({ error: "Osoblje možete pozvati jednom svake tri minute.", code: "STAFF_CALL_COOLDOWN", retryAfter });
+    }
     const call = await prisma.call.create({ data: { tableId: req.table.id, type, message: message || null, status: "OPEN" } });
     io.to("staff").emit("call:new", call); res.status(201).json(call);
-  } catch (error) { console.error("create call failed", error); res.status(500).json({ error: "Unable to create call" }); }
+  } catch (error) {
+    console.error("create call failed", error); res.status(500).json({ error: "Unable to create call" });
+  }
 });
 app.get("/tables/:tableId", requireValidTable, (req, res) => res.json({ id: req.table.id, name: req.table.name }));
 app.get("/calls/open", requireStaffOrAdminAuth, async (req, res) => {
