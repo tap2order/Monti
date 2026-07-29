@@ -6,14 +6,24 @@ self.addEventListener("push", (event) => {
     data = { title: "Tap2Order Monti", body: event.data?.text() || "Nova obavijest" };
   }
 
-  event.waitUntil(self.registration.showNotification(data.title || "Tap2Order Monti", {
+  const showNotification = self.registration.showNotification(data.title || "Tap2Order Monti", {
     body: data.body || "",
     icon: "/monti-logo.png",
     badge: "/monti-logo.png",
     tag: data.tag,
     renotify: true,
     data: { url: data.url || "/admin/waiter" },
-  }));
+  });
+  const notifyOpenTabs = self.clients.matchAll({ type: "window", includeUncontrolled: true })
+    .then((clients) => clients.forEach((client) => client.postMessage({
+      type: "admin-notification",
+      notification: {
+        id: data.tag,
+        type: data.tag?.startsWith("call-") ? "call" : "order",
+      },
+    })));
+
+  event.waitUntil(Promise.all([showNotification, notifyOpenTabs]));
 });
 
 self.addEventListener("notificationclick", (event) => {

@@ -11,6 +11,7 @@ import HotelServicesPage from "./pages/HotelServicesPage";
 import AdminOrdersOverviewPage from "./pages/AdminOrdersOverviewPage";
 import AdminRoomServiceHoursPage from "./pages/AdminRoomServiceHoursPage";
 import RoomSessionGate from "./components/RoomSessionGate";
+import AdminNotificationEffects from "./components/AdminNotificationEffects";
 
 function GuestRoomLayout() {
   return (
@@ -22,25 +23,27 @@ function GuestRoomLayout() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/t/:tableId" element={<GuestRoomLayout />}>
-        <Route index element={<RoomLanguagePage />} />
-        <Route path="menu" element={<TablePage />} />
-        <Route path="services" element={<HotelServicesPage />} />
-      </Route>
-      <Route path="/waiter" element={<WaiterPage accessMode="staff" />} />
-      <Route path="/admin/waiter" element={<WaiterPage accessMode="admin" />} />
-      <Route path="/admin/tables" element={<TablesDemoPage />} />
-      <Route path="/admin/home" element={<AdminHome />} />
-      <Route path="/admin" element={<AdminLogin />} />
-      <Route path="/admin/menu" element={<AdminMenuPage />} />
-      <Route path="/t/:tableId/screen" element={<RoomScreenPage />} />
-      <Route path="/admin/orders-overview" element={<AdminOrdersOverviewPage />} />
-      <Route path="/admin/room-service-hours" element={<AdminRoomServiceHoursPage />} />
-      <Route
-        path="*"
-        element={
-          <div
+    <>
+      <AdminNotificationEffects />
+      <Routes>
+        <Route path="/t/:tableId" element={<GuestRoomLayout />}>
+          <Route index element={<RoomLanguagePage />} />
+          <Route path="menu" element={<TablePage />} />
+          <Route path="services" element={<HotelServicesPage />} />
+        </Route>
+        <Route path="/waiter" element={<WaiterPage accessMode="staff" />} />
+        <Route path="/admin/waiter" element={<WaiterPage accessMode="admin" />} />
+        <Route path="/admin/tables" element={<TablesDemoPage />} />
+        <Route path="/admin/home" element={<AdminHome />} />
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/menu" element={<AdminMenuPage />} />
+        <Route path="/t/:tableId/screen" element={<RoomScreenPage />} />
+        <Route path="/admin/orders-overview" element={<AdminOrdersOverviewPage />} />
+        <Route path="/admin/room-service-hours" element={<AdminRoomServiceHoursPage />} />
+        <Route
+          path="*"
+          element={
+            <div
             style={{
               minHeight: "100vh",
               backgroundColor: "#dddddd", // 👈 promijenjeno (nije vise crno)
@@ -75,9 +78,10 @@ export default function App() {
 
               }}
             />
-          </div>
-        }
-      />
-    </Routes>
+            </div>
+          }
+        />
+      </Routes>
+    </>
   );
 }
