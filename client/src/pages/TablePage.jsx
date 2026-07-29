@@ -655,13 +655,15 @@ export default function TablePage() {
     <div className="tp-page" dir={langCode === "ar" ? "rtl" : "ltr"}>
       <div className="tp-ambient" aria-hidden="true" />
       <div className="tp-shell">
-        <button
-          className={`guestBackBtn${selectedCategory ? " guestBackBtn--category" : ""}`}
-          type="button"
-          onClick={handleBack}
-        >
-          ← {t.back}
-        </button>
+        {!selectedCategory && (
+          <button
+            className="guestBackBtn"
+            type="button"
+            onClick={handleBack}
+          >
+            ← {t.back}
+          </button>
+        )}
 
         <div className={`tp-header${selectedCategory ? " tp-header--category" : ""}`}>
           <div>
