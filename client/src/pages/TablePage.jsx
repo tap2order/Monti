@@ -347,6 +347,11 @@ export default function TablePage() {
     navigate(`/t/${tableId}?lang=${langCode}&view=options`);
   };
 
+  const returnToRoomOptionsAfterOrder = () => {
+    setOrderPopupOpen(false);
+    navigate(`/t/${tableId}?lang=${langCode}&view=options`, { replace: true });
+  };
+
   const goBackToCategories = () => {
     if (location.state?.guestFlowParent === "menu-categories") {
       navigate(-1);
@@ -931,7 +936,7 @@ export default function TablePage() {
           <div
             className="tp-modalOverlay"
             role="presentation"
-            onClick={() => setOrderPopupOpen(false)}
+            onClick={returnToRoomOptionsAfterOrder}
           >
             <div className="tp-modal" role="dialog" aria-modal="true" aria-label={t.orderSent} onClick={(e) => e.stopPropagation()}>
               <div className="tp-modalIcon">✓</div>
@@ -940,7 +945,7 @@ export default function TablePage() {
 
               <button
                 className="tp-btn tp-btn--checkout"
-                onClick={() => setOrderPopupOpen(false)}
+                onClick={returnToRoomOptionsAfterOrder}
               >
                 {t.ok}
               </button>
