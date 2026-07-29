@@ -24,6 +24,29 @@ This repository runs CI verification and deploys production from `main` through
 `.github/workflows/deploy-monti.yml`. The workflow updates the VPS checkout,
 deploys Prisma migrations, rebuilds the client and restarts the `monti` PM2
 process.
+
+## Admin push notifikacije
+
+Web Push zahtijeva HTTPS i stabilan VAPID par ključeva. Generišite ga jednom:
+
+```bash
+cd server
+npx web-push generate-vapid-keys
+```
+
+Dobivene vrijednosti postavite u produkcijski `server/.env` kao
+`VAPID_PUBLIC_KEY` i `VAPID_PRIVATE_KEY`; privatni ključ se ne smije commitovati.
+Postavite i `VAPID_SUBJECT` na `mailto:` adresu administratora. Nakon deploya i
+Prisma migracije, svaki admin uređaj se registruje dugmetom **Uključi
+notifikacije** na Admin Home stranici.
+
+Chrome/Edge/Firefox primaju obavijesti i kada stranica nije otvorena. Na iPhoneu
+i iPadu (iOS/iPadOS 16.4+) admin prvo mora dodati stranicu na početni ekran i
+otvoriti je kao instaliranu web-aplikaciju, pa tek onda pritisnuti dugme za
+uključivanje notifikacija.
+
+Admin prijava traje sedam dana i čuva se između zatvaranja browsera. Nakon isteka
+potrebna je nova prijava.
 # Room Service QR verifikacija
 
 Gostujući Room Service koristi dvostepenu verifikaciju. Prvo otvaranje štampanog

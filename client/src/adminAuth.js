@@ -1,8 +1,8 @@
 const KEY = "admin_auth";
 
 export function setAdminAuth(token) {
-  if (token) sessionStorage.setItem(KEY, token);
-  else sessionStorage.removeItem(KEY);
+  if (token) localStorage.setItem(KEY, token);
+  else clearAdminAuth();
 }
 
 export function getAdminAuth() {
@@ -11,10 +11,28 @@ export function getAdminAuth() {
 }
 
 export function getAdminToken() {
-  return sessionStorage.getItem(KEY) || "";
+  const token = localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
+  if (!token) return "";
+  try {
+    const encoded = token.split(".")[0].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(encoded));
+    if (!payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
+      clearAdminAuth();
+      return "";
+    }
+  } catch {
+    clearAdminAuth();
+    return "";
+  }
+  if (!localStorage.getItem(KEY)) {
+    localStorage.setItem(KEY, token);
+    sessionStorage.removeItem(KEY);
+  }
+  return token;
 }
 
 export function clearAdminAuth() {
+  localStorage.removeItem(KEY);
   sessionStorage.removeItem(KEY);
 }
 

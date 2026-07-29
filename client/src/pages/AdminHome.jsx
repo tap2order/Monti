@@ -1,14 +1,39 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { isAdminLoggedIn } from "../adminAuth";
+import { disableAdminPush, enableAdminPush, getPushState } from "../pushNotifications";
 import "../css/AdminHome.css";
 
 export default function AdminHome() {
   const nav = useNavigate();
+  const api = import.meta.env.VITE_API_URL || "";
+  const [pushState, setPushState] = useState("loading");
+  const [pushMessage, setPushMessage] = useState("");
 
   useEffect(() => {
     if (!isAdminLoggedIn()) nav("/admin");
+    getPushState().then(setPushState).catch(() => setPushState("unsupported"));
   }, [nav]);
+
+  async function togglePush() {
+    setPushState("loading");
+    setPushMessage("");
+    try {
+      const enabled = await getPushState() === "enabled";
+      if (enabled) {
+        await disableAdminPush(api);
+        setPushState("disabled");
+        setPushMessage("Notifikacije su isključene na ovom uređaju.");
+      } else {
+        await enableAdminPush(api);
+        setPushState("enabled");
+        setPushMessage("Notifikacije su uključene na ovom uređaju.");
+      }
+    } catch (error) {
+      setPushState(await getPushState().catch(() => "unsupported"));
+      setPushMessage(error.message || "Notifikacije nije moguće uključiti.");
+    }
+  }
 
   return (
     <div className="adminHomePage">
@@ -22,6 +47,19 @@ export default function AdminHome() {
               Upravljaj sobama, osobljem, zahtjevima gostiju i room service-om
               iz jednog preglednog admin centra.
             </p> */}
+          </div>
+          <div className="adminHomeNotification">
+            <button
+              type="button"
+              className={`adminHomeNotificationBtn${pushState === "enabled" ? " is-enabled" : ""}`}
+              onClick={togglePush}
+              disabled={pushState === "loading" || pushState === "unsupported" || pushState === "denied"}
+            >
+              {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : "Uključi notifikacije"}
+            </button>
+            {pushState === "unsupported" && <span>Browser ne podržava push notifikacije.</span>}
+            {pushState === "denied" && <span>Notifikacije su blokirane u postavkama browsera.</span>}
+            {pushMessage && <span>{pushMessage}</span>}
           </div>
         </div>
 

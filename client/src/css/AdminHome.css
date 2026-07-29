@@ -49,6 +49,42 @@
   align-items: flex-start;
 }
 
+.adminHomeNotification {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.adminHomeNotificationBtn {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid rgba(96, 165, 250, 0.32);
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.adminHomeNotificationBtn.is-enabled {
+  border-color: rgba(52, 211, 153, 0.38);
+  background: rgba(6, 78, 59, 0.72);
+}
+
+.adminHomeNotificationBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.adminHomeNotification span {
+  max-width: 280px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .adminHomeBtn {
   text-decoration: none;
   border-radius: 14px;
@@ -233,6 +269,11 @@
   }
 
   .adminHomeBtnPrimary {
+    width: 100%;
+  }
+
+  .adminHomeNotification,
+  .adminHomeNotificationBtn {
     width: 100%;
   }
 

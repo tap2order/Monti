@@ -4,6 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const { PrismaClient } = require("@prisma/client");
 const crypto = require("crypto");
+const webpush = require("web-push");
 const {
   defaultSchedule,
   getRoomServiceAvailability,
@@ -21,6 +22,9 @@ const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASS = process.env.ADMIN_PASS;
 const STAFF_PIN = process.env.STAFF_PIN;
 const AUTH_SECRET = process.env.AUTH_SECRET;
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@tap2order.ba";
 const CALL_MESSAGE_MIN_LENGTH = 3;
 const CALL_MESSAGE_MAX_LENGTH = 500;
 const STAFF_CALL_COOLDOWN_MS = 3 * 60 * 1000;
@@ -39,8 +43,15 @@ const allowedOrigins = [...new Set([
   "http://localhost:5173",
   "https://demo.tap2order.ba",
 ])];
-const AUTH_TTL_SECONDS = 8 * 60 * 60;
+const STAFF_AUTH_TTL_SECONDS = 8 * 60 * 60;
+const ADMIN_AUTH_TTL_SECONDS = 7 * 24 * 60 * 60;
 const rateBuckets = new Map();
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+} else {
+  console.warn("Web Push is disabled: VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are not configured.");
+}
 
 function randomToken(len = 18) {
   return crypto.randomBytes(len).toString("base64url");
@@ -60,9 +71,29 @@ function menuCategoryGroup(value, { required = true } = {}) {
 }
 
 function signToken(role) {
-  const payload = Buffer.from(JSON.stringify({ role, exp: Math.floor(Date.now() / 1000) + AUTH_TTL_SECONDS })).toString("base64url");
+  const ttl = role === "admin" ? ADMIN_AUTH_TTL_SECONDS : STAFF_AUTH_TTL_SECONDS;
+  const payload = Buffer.from(JSON.stringify({ role, exp: Math.floor(Date.now() / 1000) + ttl })).toString("base64url");
   const signature = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
   return `${payload}.${signature}`;
+}
+
+async function sendAdminPush(payload) {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY || !prisma.pushSubscription?.findMany) return;
+  const subscriptions = await prisma.pushSubscription.findMany();
+  await Promise.allSettled(subscriptions.map(async (subscription) => {
+    try {
+      await webpush.sendNotification({
+        endpoint: subscription.endpoint,
+        keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+      }, JSON.stringify(payload), { TTL: 60 * 60, urgency: "high" });
+    } catch (error) {
+      if ([404, 410].includes(error.statusCode)) {
+        await prisma.pushSubscription.deleteMany({ where: { endpoint: subscription.endpoint } });
+        return;
+      }
+      console.error("push delivery failed", error.statusCode || error.message);
+    }
+  }));
 }
 
 function getTokenRole(token) {
@@ -446,12 +477,12 @@ app.post("/auth/admin/login", rateLimit({ key: "admin-login", windowMs: 15 * 60_
   const username = text(req.body?.username, { required: true, max: 128 });
   const password = text(req.body?.password, { required: true, max: 256 });
   if (!username || !password || !safeEqual(username, ADMIN_USER) || !safeEqual(password, ADMIN_PASS)) return res.status(401).json({ error: "invalid credentials" });
-  res.json({ token: signToken("admin"), expiresIn: AUTH_TTL_SECONDS });
+  res.json({ token: signToken("admin"), expiresIn: ADMIN_AUTH_TTL_SECONDS });
 });
 app.post("/auth/staff/login", rateLimit({ key: "staff-login", windowMs: 15 * 60_000, max: 10 }), (req, res) => {
   const pin = text(req.body?.pin, { required: true, max: 128 });
   if (!pin || !safeEqual(pin, STAFF_PIN)) return res.status(401).json({ error: "invalid credentials" });
-  res.json({ token: signToken("staff"), expiresIn: AUTH_TTL_SECONDS });
+  res.json({ token: signToken("staff"), expiresIn: STAFF_AUTH_TTL_SECONDS });
 });
 
 app.get("/menu", async (req, res) => {
@@ -599,6 +630,12 @@ app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), req
     const subtotal = menuItems.reduce((sum, item) => sum + item.price * requested.get(item.id).qty, 0);
     const order = await prisma.order.create({ data: { tableId: req.table.id, clientRequestId: key, status: "UNCLAIMED", subtotal, currency, items: { create: menuItems.map((item) => ({ itemId: item.id, name: item.name, price: item.price, ...requested.get(item.id) })) } }, include: { items: true } });
     try { io.to("staff").emit("order:new", order); } catch (notificationError) { console.error("order notification failed", notificationError); }
+    sendAdminPush({
+      title: "Nova Room Service narudžba",
+      body: `Soba ${req.table.id} · ${requested.size} stavki · ${subtotal.toFixed(2)} ${currency}`,
+      url: "/waiter",
+      tag: `order-${order.id}`,
+    }).catch((notificationError) => console.error("order push failed", notificationError));
     res.status(201).json(order);
   } catch (error) {
     if (error.code === "P2002") { const order = await prisma.order.findUnique({ where: { clientRequestId: String(req.headers["idempotency-key"]) }, include: { items: true } }); if (order) return res.json(order); }
@@ -651,7 +688,14 @@ app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requir
       return res.status(429).json({ error: "Osoblje možete pozvati jednom svake tri minute.", code: "STAFF_CALL_COOLDOWN", retryAfter });
     }
     const call = await prisma.call.create({ data: { tableId: req.table.id, type, message: message || null, status: "OPEN" } });
-    io.to("staff").emit("call:new", call); res.status(201).json(call);
+    io.to("staff").emit("call:new", call);
+    sendAdminPush({
+      title: call.type === "bill" ? "Gost traži račun" : "Gost poziva osoblje",
+      body: `Soba ${call.tableId}${call.message ? ` · ${call.message}` : ""}`,
+      url: "/waiter",
+      tag: `call-${call.id}`,
+    }).catch((notificationError) => console.error("call push failed", notificationError));
+    res.status(201).json(call);
   } catch (error) {
     console.error("create call failed", error); res.status(500).json({ error: "Unable to create call" });
   }
@@ -671,6 +715,33 @@ app.patch("/calls/:callId/handle", requireStaffOrAdminAuth, async (req, res) => 
 });
 
 app.use("/api/admin", requireAdmin);
+app.get("/api/admin/push/public-key", (_req, res) => {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return res.status(503).json({ error: "Push notifications are not configured" });
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+app.post("/api/admin/push/subscriptions", async (req, res) => {
+  try {
+    const endpoint = text(req.body?.endpoint, { required: true, max: 2048 });
+    const p256dh = text(req.body?.keys?.p256dh, { required: true, max: 512 });
+    const auth = text(req.body?.keys?.auth, { required: true, max: 512 });
+    if (!endpoint || !p256dh || !auth || !/^https:\/\//i.test(endpoint)) return res.status(400).json({ error: "Invalid push subscription" });
+    await prisma.pushSubscription.upsert({
+      where: { endpoint },
+      create: { endpoint, p256dh, auth, userAgent: text(req.headers["user-agent"], { max: 500 }) || null },
+      update: { p256dh, auth, userAgent: text(req.headers["user-agent"], { max: 500 }) || null },
+    });
+    res.status(201).json({ ok: true });
+  } catch (error) {
+    console.error("save push subscription failed", error);
+    res.status(500).json({ error: "Unable to enable push notifications" });
+  }
+});
+app.delete("/api/admin/push/subscriptions", async (req, res) => {
+  const endpoint = text(req.body?.endpoint, { required: true, max: 2048 });
+  if (!endpoint) return res.status(400).json({ error: "Invalid push subscription" });
+  await prisma.pushSubscription.deleteMany({ where: { endpoint } });
+  res.json({ ok: true });
+});
 app.get("/api/admin/tables", async (req, res) => {
   try { res.json(await prisma.table.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, name: true, token: true, isActive: true, createdAt: true } })); }
   catch (error) { console.error("list tables failed", error); res.status(500).json({ error: "Unable to load tables" }); }

@@ -1,0 +1,19 @@
+{
+  "id": "/admin",
+  "name": "Tap2Order Monti Admin",
+  "short_name": "Monti Admin",
+  "description": "Monti Hotel Room Service administracija",
+  "start_url": "/admin/home",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08101d",
+  "theme_color": "#08101d",
+  "icons": [
+    {
+      "src": "/monti-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
