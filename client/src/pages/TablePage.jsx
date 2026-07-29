@@ -692,10 +692,6 @@ export default function TablePage() {
             ) : (
               <div>
                 <h2 className="tp-h2">{t.menu}</h2>
-                <DietaryLegend inCategoryHeader />
-                <div className="tp-badge tp-badge--menuTotal">
-                  {categories.length} {t.total}
-                </div>
               </div>
             )}
           </div>
