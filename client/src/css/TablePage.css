@@ -437,6 +437,27 @@
   color: #fffaf0;
 }
 
+.tp-itemTitleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.tp-itemTitleRow .tp-itemName {
+  margin-bottom: 0;
+}
+
+.tp-dietaryCodes {
+  color: var(--tp-primary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 
 .tp-itemMeta {
   display: flex;
@@ -466,6 +487,36 @@
   font-variant-numeric: tabular-nums;
   color: #fffaf0;
   white-space: nowrap;
+}
+
+.tp-dietaryLegend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin: 6px 16px 18px;
+  padding: 15px 18px;
+  border: 1px solid var(--tp-border);
+  border-radius: 14px;
+  color: var(--tp-muted);
+  background: rgba(255, 255, 255, 0.018);
+  direction: ltr;
+}
+
+.tp-dietaryLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.045em;
+  white-space: nowrap;
+}
+
+.tp-dietaryLegendCode {
+  color: var(--tp-primary);
+  font-weight: 800;
 }
 
 /* Inputs */
@@ -883,6 +934,19 @@
     font-size: 21px;
   }
 
+  .tp-dietaryLegend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: start;
+    gap: 10px 14px;
+    margin: 4px 14px 16px;
+    padding: 14px;
+  }
+
+  .tp-dietaryLegendItem {
+    white-space: normal;
+  }
+
   .tp-price {
     font-size: 20px;
   }
@@ -946,6 +1010,10 @@
 
   .tp-itemMedia img {
     height: 100%;
+  }
+
+  .tp-dietaryLegend {
+    grid-template-columns: 1fr;
   }
 }
 

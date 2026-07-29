@@ -3,6 +3,27 @@ import { useLocation, useParams, useSearchParams, useNavigate } from "react-rout
 import { isRoomSessionError, lockRoomSession } from "../roomSession";
 import "../css/TablePage.css";
 
+const DIETARY_LEGEND = [
+  { code: "G", label: "GLUTEN FREE" },
+  { code: "L", label: "LACTOSE FREE" },
+  { code: "V", label: "VEGETARIAN" },
+  { code: "N", label: "NUTS" },
+];
+
+function DietaryLegend() {
+  return (
+    <aside className="tp-dietaryLegend" aria-label="Dietary information">
+      {DIETARY_LEGEND.map(({ code, label }) => (
+        <div key={code} className="tp-dietaryLegendItem">
+          <span className="tp-dietaryLegendCode">{code}</span>
+          <span aria-hidden="true">–</span>
+          <span>{label}</span>
+        </div>
+      ))}
+    </aside>
+  );
+}
+
 export default function TablePage() {
   const { tableId } = useParams();
   const navigate = useNavigate();
@@ -285,6 +306,17 @@ export default function TablePage() {
     if (lang === 4 && category.name4) return category.name4;
 
     return category.name;
+  };
+
+  const getDietaryCodes = (item) => {
+    if (!item?.dietaryInfo) return "";
+
+    const validCodes = new Set(DIETARY_LEGEND.map(({ code }) => code));
+    return item.dietaryInfo
+      .split(",")
+      .map((code) => code.trim().toUpperCase())
+      .filter((code, index, codes) => validCodes.has(code) && codes.indexOf(code) === index)
+      .join(",");
   };
 
   const openCategory = (cat) => {
@@ -709,64 +741,84 @@ export default function TablePage() {
           )}
 
           {!loading && !selectedCategory && (
-            <div className="tp-categoriesGrid">
-              {categories.map((cat) => {
-                const count = cat?.items?.length || 0;
-                const accent = accentFromName(cat.name);
+            <>
+              <div className="tp-categoriesGrid">
+                {categories.map((cat) => {
+                  const count = cat?.items?.length || 0;
+                  const accent = accentFromName(cat.name);
 
-                return (
-                  <button
-                    key={cat.id}
-                    className="tp-categoryCard"
-                    onClick={() => openCategory(cat.id)}
-                    style={{ "--tp-accent": accent }}
-                  >
-                    <div className="tp-categoryName">{getCategoryName(cat)}</div>
-                    <div className="tp-categoryMeta">
-                      {count} {t.items}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                  return (
+                    <button
+                      key={cat.id}
+                      className="tp-categoryCard"
+                      onClick={() => openCategory(cat.id)}
+                      style={{ "--tp-accent": accent }}
+                    >
+                      <div className="tp-categoryName">{getCategoryName(cat)}</div>
+                      <div className="tp-categoryMeta">
+                        {count} {t.items}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <DietaryLegend />
+            </>
           )}
 
           {!loading && selectedCategory && (
-            <div className="tp-menuList">
-              {itemsForSelected.map((it) => (
-                <div key={it.id} className="tp-menuItem">
-                  <div className="tp-itemMedia">
-                    {it.imageUrl ? (
-                      <img src={it.imageUrl} alt={getItemName(it)} />
-                    ) : (
-                      <span>
-                        {String(getItemName(it) || "?").charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
+            <>
+              <div className="tp-menuList">
+                {itemsForSelected.map((it) => {
+                  const dietaryCodes = getDietaryCodes(it);
 
-                  <div className="tp-itemLeft">
-                    <div className="tp-itemName">{getItemName(it)}</div>
-                    <div className="tp-itemMeta">
-                      <span className="tp-metaPill">
-                        {getCategoryName(selectedCategoryObject)}
-                      </span>
+                  return (
+                    <div key={it.id} className="tp-menuItem">
+                      <div className="tp-itemMedia">
+                        {it.imageUrl ? (
+                          <img src={it.imageUrl} alt={getItemName(it)} />
+                        ) : (
+                          <span>
+                            {String(getItemName(it) || "?").charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="tp-itemLeft">
+                        <div className="tp-itemTitleRow">
+                          <div className="tp-itemName">{getItemName(it)}</div>
+                          {dietaryCodes && (
+                            <span
+                              className="tp-dietaryCodes"
+                              aria-label={`Dietary information: ${dietaryCodes}`}
+                            >
+                              ({dietaryCodes})
+                            </span>
+                          )}
+                        </div>
+                        <div className="tp-itemMeta">
+                          <span className="tp-metaPill">
+                            {getCategoryName(selectedCategoryObject)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="tp-itemRight">
+                        <div className="tp-price">{it.price.toFixed(2)} KM</div>
+                        <button
+                          onClick={() => addItem(it)}
+                          disabled={!availability?.isOpen || sessionLocked || it.isAvailable === false}
+                          className="tp-btn tp-btn--primary"
+                        >
+                          {t.add}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="tp-itemRight">
-                    <div className="tp-price">{it.price.toFixed(2)} KM</div>
-                    <button
-                      onClick={() => addItem(it)}
-                      disabled={!availability?.isOpen || sessionLocked || it.isAvailable === false}
-                      className="tp-btn tp-btn--primary"
-                    >
-                      {t.add}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+              <DietaryLegend />
+            </>
           )}
         </div>
 
