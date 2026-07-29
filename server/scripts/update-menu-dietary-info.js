@@ -60,7 +60,7 @@ const dietaryItems = [
 
   { category: "Pasta i rižoto", name: 'Rižoto "Igman"', dietaryInfo: "N" },
   { category: "Pasta i rižoto", name: "Rižoto sa škampima", dietaryInfo: "G" },
-  { category: "Pasta i rižoto", name: "Tagliatele Alfredo", dietaryInfo: "N" },
+  { category: "Pasta i rižoto", name: "Tagliatelle Alfredo", dietaryInfo: "N" },
 
   { category: "Jela po preporuci chefa", name: "Juneći obrazi", dietaryInfo: "G" },
   { category: "Jela po preporuci chefa", name: "Janjetina à la chef", dietaryInfo: "N" },
