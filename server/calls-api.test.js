@@ -43,14 +43,16 @@ test.beforeEach(() => { calls = []; roomSessions = []; });
 test("guest requires a valid room credential and allowed call type", async () => {
   assert.equal((await request("/calls", { method: "POST", body: { type: "waiter" } })).status, 401);
   assert.equal((await request("/calls", { method: "POST", headers: { Cookie: await roomCookie() }, body: { type: "anything" } })).status, 400);
+  assert.equal((await request("/calls", { method: "POST", headers: { Cookie: await roomCookie() }, body: { type: "waiter", message: "  " } })).status, 400);
 });
 test("staff token is required to list and handle calls", async () => {
-  const created = await request("/calls", { method: "POST", headers: { Cookie: await roomCookie() }, body: { type: "bill" } });
+  const created = await request("/calls", { method: "POST", headers: { Cookie: await roomCookie() }, body: { type: "waiter", message: "Molim dodatne peškire." } });
   assert.equal(created.status, 201);
   assert.equal((await request("/calls/open", { headers: { "X-Waiter-Id": "1" } })).status, 401);
   const token = await staffToken();
   const list = await request("/calls/open", { headers: { Authorization: `Bearer ${token}` } });
   assert.equal(list.status, 200);
+  assert.equal((await list.clone().json())[0].message, "Molim dodatne peškire.");
   const handled = await request("/calls/call-1/handle", { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
   assert.equal(handled.status, 200);
   assert.equal((await handled.json()).status, "HANDLED");

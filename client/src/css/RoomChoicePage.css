@@ -207,6 +207,108 @@
   background: rgba(136, 19, 55, 0.3);
 }
 
+.choiceModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 7, 13, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.choiceModal {
+  width: min(100%, 480px);
+  border: 1px solid var(--stroke-strong);
+  border-radius: 24px;
+  background: #0c111c;
+  box-shadow: var(--shadow-main);
+  padding: 24px;
+}
+
+.choiceModal h2 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.choiceModal > p {
+  margin: 10px 0 18px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.choiceModalField {
+  display: grid;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.choiceModalField textarea {
+  min-height: 132px;
+  resize: vertical;
+  border: 1px solid var(--stroke-strong);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  padding: 14px;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.choiceModalField textarea:focus {
+  outline: none;
+  border-color: rgba(212, 166, 58, 0.55);
+  box-shadow: 0 0 0 3px rgba(212, 166, 58, 0.1);
+}
+
+.choiceModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.choiceModalActions button {
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 16px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.choiceModalCancel {
+  border: 1px solid var(--stroke-strong);
+  background: transparent;
+  color: var(--text-main);
+}
+
+.choiceModalSend {
+  border: 1px solid rgba(212, 166, 58, 0.5);
+  background: var(--accent);
+  color: #16120a;
+}
+
+.choiceModalActions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (max-width: 640px) {
   .choicePage {
     padding: 14px;
@@ -249,6 +351,16 @@
 
   .choiceOptionText {
     font-size: 13px;
+  }
+
+  .choiceModal {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .choiceModalActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }
 

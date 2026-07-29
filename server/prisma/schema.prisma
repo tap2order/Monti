@@ -31,7 +31,7 @@ model MenuItem {
   currency   String       @default("BAM")
   sortOrder  Int          @default(0)
   isActive   Boolean      @default(true)
-  isAvailable Boolean     @default(true)
+  isAvailable Boolean      @default(true)
   categoryId String
   category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
@@ -74,6 +74,7 @@ model Call {
   id          String     @id @default(cuid())
   tableId     String
   type        String     @default("waiter")
+  message     String?
   status      CallStatus @default(OPEN)
   createdAt   DateTime   @default(now())
   handledAt   DateTime?

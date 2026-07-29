@@ -1,0 +1,2 @@
+ALTER TABLE "Call"
+ADD COLUMN "message" TEXT;

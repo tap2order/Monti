@@ -21,6 +21,8 @@ const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASS = process.env.ADMIN_PASS;
 const STAFF_PIN = process.env.STAFF_PIN;
 const AUTH_SECRET = process.env.AUTH_SECRET;
+const CALL_MESSAGE_MIN_LENGTH = 3;
+const CALL_MESSAGE_MAX_LENGTH = 500;
 const ROOM_PENDING_TTL_SECONDS = Number(process.env.ROOM_PENDING_TTL_SECONDS || 5 * 60);
 const ROOM_VERIFIED_TTL_SECONDS = Number(process.env.ROOM_VERIFIED_TTL_SECONDS || 60 * 60);
 const ROOM_QR_ORIGIN = new URL(PUBLIC_CLIENT_URL).origin;
@@ -622,7 +624,11 @@ app.post("/calls", rateLimit({ key: "calls", windowMs: 60_000, max: 8 }), requir
   try {
     const type = ["waiter", "bill"].includes(req.body?.type) ? req.body.type : null;
     if (!type) return res.status(400).json({ error: "invalid call type" });
-    const call = await prisma.call.create({ data: { tableId: req.table.id, type, status: "OPEN" } });
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (type === "waiter" && (message.length < CALL_MESSAGE_MIN_LENGTH || message.length > CALL_MESSAGE_MAX_LENGTH)) {
+      return res.status(400).json({ error: "message must contain between 3 and 500 characters" });
+    }
+    const call = await prisma.call.create({ data: { tableId: req.table.id, type, message: message || null, status: "OPEN" } });
     io.to("staff").emit("call:new", call); res.status(201).json(call);
   } catch (error) { console.error("create call failed", error); res.status(500).json({ error: "Unable to create call" }); }
 });
