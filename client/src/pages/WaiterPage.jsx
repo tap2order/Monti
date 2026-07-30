@@ -268,6 +268,12 @@ export default function WaiterPage({ accessMode = "staff" }) {
               <div className="wp-itemPrice">{(Number(item.price) * item.qty).toFixed(2)} KM</div>
             </div>
           ))}
+          {Number(order.serviceFee || 0) > 0 && (
+            <div className="wp-itemRow">
+              <div className="wp-itemName">Room service usluga</div>
+              <div className="wp-itemPrice">{Number(order.serviceFee).toFixed(2)} KM</div>
+            </div>
+          )}
         </div>
       </div>
     </article>

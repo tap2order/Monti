@@ -16,6 +16,22 @@ const DIETARY_LEGEND = [
   { code: "N", label: "NUTS" },
 ];
 
+const ROOM_SERVICE_FEE = 10;
+const ROOM_SERVICE_FEE_NOTICE = {
+  bs: "Room service usluga se naplacuje dodatnih 10.00 KM po narudzbi.",
+  en: "A 10.00 KM room service fee is added to every order.",
+  de: "Fuer jede Bestellung wird eine Zimmerservicegebuehr von 10.00 KM berechnet.",
+  tr: "Her siparise 10.00 KM oda servisi ucreti eklenir.",
+  ar: "A 10.00 KM room service fee is added to every order.",
+};
+const ROOM_SERVICE_FEE_LABELS = {
+  bs: { items: "Artikli", fee: "Room service usluga" },
+  en: { items: "Items", fee: "Room service fee" },
+  de: { items: "Artikel", fee: "Zimmerservicegebuehr" },
+  tr: { items: "Urunler", fee: "Oda servisi ucreti" },
+  ar: { items: "Items", fee: "Room service fee" },
+};
+
 const MENU_FILTER_LABELS = {
   bs: { ALL: "Sve", DRINKS: "Piće", FOOD: "Hrana", DESSERTS: "Deserti", KIDS: "Dječiji meni" },
   en: { ALL: "All", DRINKS: "Drinks", FOOD: "Food", DESSERTS: "Desserts", KIDS: "Kids menu" },
@@ -518,10 +534,12 @@ export default function TablePage() {
 
   const cartItems = useMemo(() => Object.values(cart), [cart]);
 
-  const total = useMemo(
+  const itemsSubtotal = useMemo(
     () => cartItems.reduce((sum, it) => sum + it.price * it.qty, 0),
     [cartItems]
   );
+
+  const total = cartItems.length > 0 ? itemsSubtotal + ROOM_SERVICE_FEE : 0;
 
   const cartQty = useMemo(
     () => cartItems.reduce((s, x) => s + x.qty, 0),
@@ -681,6 +699,7 @@ export default function TablePage() {
             <div className="tp-sub">
               {selectedCategory ? t.subtitleCategory : t.subtitleHome}
             </div>
+            <div className="tp-serviceFeeNotice">{ROOM_SERVICE_FEE_NOTICE[langCode]}</div>
           </div>
 
         </div>
@@ -902,6 +921,16 @@ export default function TablePage() {
               </div>
 
               <div className="tp-drawerFooter">
+                <div className="tp-priceBreakdown">
+                  <div className="tp-breakdownRow">
+                    <span>{ROOM_SERVICE_FEE_LABELS[langCode].items}</span>
+                    <span>{itemsSubtotal.toFixed(2)} KM</span>
+                  </div>
+                  <div className="tp-breakdownRow">
+                    <span>{ROOM_SERVICE_FEE_LABELS[langCode].fee}</span>
+                    <span>{ROOM_SERVICE_FEE.toFixed(2)} KM</span>
+                  </div>
+                </div>
                 <div className="tp-totalRow">
                   <div className="tp-totalLabel">{t.totalLabel}</div>
                   <div className="tp-totalValue">{total.toFixed(2)} KM</div>

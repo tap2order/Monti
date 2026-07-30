@@ -48,6 +48,7 @@ model Order {
   claimedAt   DateTime?
   completedAt DateTime?
   subtotal    Float       @default(0)
+  serviceFee  Float       @default(0)
   currency    String      @default("BAM")
   claimedById Int?
   claimedBy   Waiter?     @relation("OrderClaimedBy", fields: [claimedById], references: [id])

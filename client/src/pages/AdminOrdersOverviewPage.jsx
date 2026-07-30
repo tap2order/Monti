@@ -26,9 +26,10 @@ function statusLabel(status) {
 }
 
 function getOrderTotal(order) {
-  return (order.items || []).reduce((sum, item) => {
+  const itemsTotal = (order.items || []).reduce((sum, item) => {
     return sum + Number(item.price || 0) * Number(item.qty || 0);
   }, 0);
+  return itemsTotal + Number(order.serviceFee || 0);
 }
 
 function getItemsSummary(order) {
@@ -571,6 +572,14 @@ export default function AdminOrdersOverviewPage() {
                                     </div>
                                   </div>
                                 ))}
+                                {Number(order.serviceFee || 0) > 0 && (
+                                  <div className="ordersOverviewDetailsItem">
+                                    <div><strong>Room service usluga</strong></div>
+                                    <div className="ordersOverviewDetailsPrice">
+                                      {Number(order.serviceFee).toFixed(2)} KM
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>

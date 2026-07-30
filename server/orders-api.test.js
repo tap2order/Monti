@@ -33,7 +33,7 @@ const fakePrisma = {
     findUnique: async ({ where }) => orders.find((order) => order.id === where.id || order.clientRequestId === where.clientRequestId) || null,
     findMany: async ({ where }) => orders.filter((order) => !where?.status || order.status === where.status),
     create: async ({ data }) => {
-      const order = { id: `order-${orders.length + 1}`, tableId: data.tableId, clientRequestId: data.clientRequestId, status: data.status, createdAt: new Date(), claimedAt: null, completedAt: null, claimedById: null, items: data.items.create.map((item, index) => ({ id: `item-${index}`, ...item })) };
+      const order = { id: `order-${orders.length + 1}`, tableId: data.tableId, clientRequestId: data.clientRequestId, status: data.status, subtotal: data.subtotal, serviceFee: data.serviceFee, currency: data.currency, createdAt: new Date(), claimedAt: null, completedAt: null, claimedById: null, items: data.items.create.map((item, index) => ({ id: `item-${index}`, ...item })) };
       orders.push(order);
       return order;
     },
@@ -102,6 +102,8 @@ test("order prices and names are always snapshotted from the server menu", async
   assert.equal(response.status, 201);
   const order = await response.json();
   assert.deepEqual(order.items[0], { id: "item-0", itemId: "coffee", name: "Coffee", price: 2.5, qty: 2, note: null });
+  assert.equal(order.subtotal, 5);
+  assert.equal(order.serviceFee, 10);
 });
 test("idempotency key prevents duplicate orders", async () => {
   const options = { method: "POST", headers: { "Idempotency-Key": "request-key-000003", Cookie: await roomCookie() }, body: { items: [{ itemId: "coffee", qty: 1 }] } };

@@ -32,6 +32,7 @@ const ROOM_PENDING_TTL_SECONDS = Number(process.env.ROOM_PENDING_TTL_SECONDS || 
 const ROOM_VERIFIED_TTL_SECONDS = Number(process.env.ROOM_VERIFIED_TTL_SECONDS || 60 * 60);
 const ROOM_QR_ORIGIN = new URL(PUBLIC_CLIENT_URL).origin;
 const MENU_CATEGORY_GROUPS = new Set(["DRINKS", "FOOD", "DESSERTS", "KIDS", "OTHER"]);
+const ROOM_SERVICE_FEE = 10;
 
 if (!ADMIN_USER || !ADMIN_PASS || !STAFF_PIN || !AUTH_SECRET) {
   console.error("Missing ADMIN_USER, ADMIN_PASS, STAFF_PIN or AUTH_SECRET environment variables.");
@@ -637,11 +638,12 @@ app.post("/orders", rateLimit({ key: "orders", windowMs: 60_000, max: 12 }), req
     const currency = menuItems[0]?.currency || "BAM";
     if (menuItems.some((item) => (item.currency || "BAM") !== currency)) return res.status(400).json({ error: "mixed currencies are not supported" });
     const subtotal = menuItems.reduce((sum, item) => sum + item.price * requested.get(item.id).qty, 0);
-    const order = await prisma.order.create({ data: { tableId: req.table.id, clientRequestId: key, status: "UNCLAIMED", subtotal, currency, items: { create: menuItems.map((item) => ({ itemId: item.id, name: item.name, price: item.price, ...requested.get(item.id) })) } }, include: { items: true } });
+    const total = subtotal + ROOM_SERVICE_FEE;
+    const order = await prisma.order.create({ data: { tableId: req.table.id, clientRequestId: key, status: "UNCLAIMED", subtotal, serviceFee: ROOM_SERVICE_FEE, currency, items: { create: menuItems.map((item) => ({ itemId: item.id, name: item.name, price: item.price, ...requested.get(item.id) })) } }, include: { items: true } });
     try { io.to("staff").emit("order:new", order); } catch (notificationError) { console.error("order notification failed", notificationError); }
     sendPush({
       title: "Nova Room Service narudžba",
-      body: `Soba ${req.table.id} · ${requested.size} stavki · ${subtotal.toFixed(2)} ${currency}`,
+      body: `Soba ${req.table.id} · ${requested.size} stavki · ${total.toFixed(2)} ${currency}`,
       url: "/admin/waiter",
       tag: `order-${order.id}`,
     }).catch((notificationError) => console.error("order push failed", notificationError));

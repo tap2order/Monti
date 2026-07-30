@@ -166,6 +166,15 @@
   margin: 14px 0 16px;
 }
 
+.tp-serviceFeeNotice {
+  margin-top: 10px;
+  max-width: 560px;
+  color: var(--tp-primary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .tp-alerts:empty {
   display: none;
 }
@@ -1035,6 +1044,21 @@
     align-items: flex-start;
     padding: 2px 2px 0;
   }
+}
+
+.tp-priceBreakdown {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tp-breakdownRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--tp-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 520px) {
