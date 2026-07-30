@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useRoomNumber } from "../roomDisplay";
+import { useRoomDisplayName } from "../roomDisplay";
 import "../css/HotelServicesPage.css";
 
 export default function HotelServicesPage() {
   const navigate = useNavigate();
   const { tableId } = useParams();
-  const roomNumber = useRoomNumber(tableId);
+  const roomDisplayName = useRoomDisplayName();
   const [searchParams] = useSearchParams();
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
@@ -137,7 +137,7 @@ export default function HotelServicesPage() {
           <div className="hotelServicesHeroLeft">
             <p className="hotelServicesEyebrow">{t.eyebrow}</p>
             <h1 className="hotelServicesRoomTitle">
-              {t.room} {roomNumber}
+              {roomDisplayName || `${t.room} ${tableId}`}
             </h1>
             <p className="hotelServicesSubtitle">{t.subtitle}</p>
           </div>
