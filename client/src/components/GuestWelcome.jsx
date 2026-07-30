@@ -13,12 +13,16 @@ import {
 import { GUEST_HOTEL_CONFIG } from "../guestHotelConfig";
 import { GUEST_WELCOME_LANGUAGES } from "../guestWelcomeContent";
 
-function LanguageDropdown({ lang, onChange, label }) {
+function LanguageDropdown({ lang, onChange, label, onOpenChange }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
   const triggerRef = useRef(null);
   const languageRefs = useRef([]);
   const activeLanguageIndex = GUEST_WELCOME_LANGUAGES.findIndex(([code]) => code === lang);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   const focusLanguage = (index) => {
     const nextIndex = (index + GUEST_WELCOME_LANGUAGES.length) % GUEST_WELCOME_LANGUAGES.length;
@@ -96,12 +100,13 @@ function LanguageDropdown({ lang, onChange, label }) {
 
 export function WelcomeHero({ lang, onLanguageChange, t, roomDisplayName, tableId }) {
   const roomName = roomDisplayName || tableId;
+  const [languageOpen, setLanguageOpen] = useState(false);
 
   return (
-    <header className="welcomeHero">
+    <header className={`welcomeHero${languageOpen ? " welcomeHero--languageOpen" : ""}`}>
       <img className="welcomeHeroImage" src="https://www.monti.ba/img/landingproljece.webp" alt="Monti Hotel & Wellness" />
       <div className="welcomeHeroOverlay" />
-      <LanguageDropdown lang={lang} onChange={onLanguageChange} label={t.language} />
+      <LanguageDropdown lang={lang} onChange={onLanguageChange} label={t.language} onOpenChange={setLanguageOpen} />
       <div className="welcomeHeroContent">
         <p className="welcomeHeroBrand">Monti Hotel &amp; Wellness</p>
         <h1>{t.welcome}</h1>

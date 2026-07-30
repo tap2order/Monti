@@ -799,6 +799,8 @@
   z-index: 999;
   display: flex;
   justify-content: flex-end;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .tp-drawer {
@@ -809,6 +811,7 @@
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .tp-drawerHeader {
@@ -822,7 +825,12 @@
 
 .tp-drawerBody {
   padding: 14px;
-  overflow: auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   flex: 1;
 }
 

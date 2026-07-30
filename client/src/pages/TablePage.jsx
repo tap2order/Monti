@@ -498,6 +498,35 @@ export default function TablePage() {
     sessionStorage.setItem(cartStorageKey, JSON.stringify(cart));
   }, [cart, cartStorageKey]);
 
+  useEffect(() => {
+    if (!cartOpen) return undefined;
+
+    const { body, documentElement } = document;
+    const scrollY = window.scrollY;
+    const previous = {
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      htmlOverflow: documentElement.style.overflow,
+    };
+
+    documentElement.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      documentElement.style.overflow = previous.htmlOverflow;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.position = previous.bodyPosition;
+      body.style.top = previous.bodyTop;
+      body.style.width = previous.bodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [cartOpen]);
+
   const categories = useMemo(() => menu, [menu]);
   const visibleCategoryGroups = useMemo(
     () => availableCategoryGroups(categories),
