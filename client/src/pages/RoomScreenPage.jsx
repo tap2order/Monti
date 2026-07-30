@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { fetchIgmanWeather } from "../igmanWeather";
 import "../css/RoomScreenPage.css";
 
 export default function RoomScreenPage() {
@@ -87,21 +88,8 @@ export default function RoomScreenPage() {
   useEffect(() => {
     const updateIgmanTemperature = async () => {
       try {
-        const response = await fetch(
-          "https://api.open-meteo.com/v1/forecast?latitude=43.73&longitude=18.29&current=temperature_2m"
-        );
-        const data = await response.json();
-
-        if (
-          data &&
-          data.current &&
-          typeof data.current.temperature_2m !== "undefined"
-        ) {
-          const temp = Math.round(data.current.temperature_2m);
-          setTemperature(`Igman · ${temp}°C`);
-        } else {
-          setTemperature("Igman · --°C");
-        }
+        const data = await fetchIgmanWeather();
+        setTemperature(`Igman · ${data.temperature}°C`);
       } catch {
         setTemperature("Igman · --°C");
       }

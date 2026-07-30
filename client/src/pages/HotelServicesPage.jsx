@@ -128,7 +128,7 @@ export default function HotelServicesPage() {
         <button
           className="guestBackBtn"
           type="button"
-          onClick={() => navigate(`/t/${tableId}?lang=${lang}&view=options`)}
+          onClick={() => navigate(`/t/${tableId}?lang=${lang}`)}
         >
           ← {t.backToMenu}
         </button>

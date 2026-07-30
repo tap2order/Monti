@@ -346,12 +346,12 @@ export default function TablePage() {
   };
 
   const goBackToRoomChoice = () => {
-    navigate(`/t/${tableId}?lang=${langCode}&view=options`);
+    navigate(`/t/${tableId}?lang=${langCode}`);
   };
 
   const returnToRoomOptionsAfterOrder = () => {
     setOrderPopupOpen(false);
-    navigate(`/t/${tableId}?lang=${langCode}&view=options`, { replace: true });
+    navigate(`/t/${tableId}?lang=${langCode}`, { replace: true });
   };
 
   const goBackToCategories = () => {

@@ -69,6 +69,42 @@
   z-index: 1;
 }
 
+.choiceCard--home { max-width: 920px; padding: 30px; }
+.choiceHomeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.choiceHomeGrid .choiceOption {
+  min-height: 116px; flex-direction: row; align-items: center;
+  justify-content: flex-start; text-align: start; gap: 16px;
+}
+.choiceHomeGrid .choiceOption > svg { flex: 0 0 auto; width: 28px; height: 28px; color: var(--accent); }
+.choiceHomeGrid .choiceOption span { display: grid; gap: 6px; min-width: 0; }
+.choiceHomeGrid .choiceOption strong { font-size: 22px; line-height: 1.2; }
+.choiceHomeGrid .choiceOption small { color: var(--text-soft); font-size: 14px; line-height: 1.4; }
+.choiceInfoCard { background: rgba(255, 255, 255, 0.035); }
+.choiceActionCard {
+  border-color: rgba(212, 166, 58, 0.28);
+  background: linear-gradient(135deg, rgba(212, 166, 58, 0.14), rgba(255, 255, 255, 0.035));
+}
+.choiceOption:focus-visible, .choiceModalActions button:focus-visible, .choiceModalClose:focus-visible {
+  outline: 3px solid rgba(212, 166, 58, 0.6); outline-offset: 3px;
+}
+.choiceOption:active { transform: translateY(1px) scale(0.995); }
+.choiceModal { position: relative; }
+.choiceModalClose {
+  position: absolute; top: 16px; right: 16px; width: 40px; height: 40px;
+  display: grid; place-items: center; border: 1px solid var(--stroke-strong);
+  border-radius: 12px; background: rgba(255,255,255,.04); color: var(--text-main); cursor: pointer;
+}
+[dir="rtl"] .choiceModalClose { right: auto; left: 16px; }
+.choiceModal h2 { padding-inline-end: 48px; }
+.choiceDetails { display: grid; gap: 0; margin: 20px 0 0; }
+.choiceDetails > div {
+  display: flex; justify-content: space-between; gap: 24px;
+  padding: 13px 0; border-bottom: 1px solid var(--stroke);
+}
+.choiceDetails > div:last-child { border-bottom: 0; }
+.choiceDetails dt { color: var(--text-soft); }
+.choiceDetails dd { margin: 0; font-weight: 800; text-align: end; overflow-wrap: anywhere; }
+
 .choiceTopRow {
   display: flex;
   align-items: flex-start;
@@ -408,6 +444,12 @@
     transform: scale(0.9);
     transform-origin: center;
   }
+}
+
+@media (max-width: 520px) {
+  .choiceCard--home { padding: 20px 16px 22px; }
+  .choiceHomeGrid { grid-template-columns: 1fr; }
+  .choiceHomeGrid .choiceOption { min-height: 92px; }
 }
 
 .guestPoweredBy {
