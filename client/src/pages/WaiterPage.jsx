@@ -97,7 +97,7 @@ export default function WaiterPage({ accessMode = "staff" }) {
         setPushMessage("Notifikacije su uključene na ovom uređaju.");
       }
     } catch (err) {
-      setPushState(await getPushState().catch(() => "unsupported"));
+      setPushState(await getPushState().catch(() => "disabled"));
       setPushMessage(err.message || "Notifikacije nije moguće uključiti.");
     }
   }
@@ -171,7 +171,10 @@ export default function WaiterPage({ accessMode = "staff" }) {
         if (state === "enabled") await enableStaffPush(api, token);
         setPushState(state);
       })
-      .catch(() => setPushState("unsupported"));
+      .catch((err) => {
+        setPushState("disabled");
+        setPushMessage(err.message || "Nije moguće provjeriti stanje notifikacija.");
+      });
   }, [api, isAdmin, token]);
 
   async function action(path, method, id) {
@@ -274,7 +277,7 @@ export default function WaiterPage({ accessMode = "staff" }) {
               <button
                 className={`wp-btn ${pushState === "enabled" ? "wp-btn--success" : "wp-btn--primary"}`}
                 onClick={toggleStaffPush}
-                disabled={pushState === "loading" || pushState === "unsupported" || pushState === "denied"}
+                disabled={pushState === "loading" || pushState === "unsupported" || pushState === "insecure" || pushState === "denied"}
               >
                 {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : "Uključi notifikacije"}
               </button>
@@ -284,6 +287,7 @@ export default function WaiterPage({ accessMode = "staff" }) {
         </header>
         {!isAdmin && pushState === "denied" && <div className="wp-alert wp-alert--error">Notifikacije su blokirane u postavkama browsera.</div>}
         {!isAdmin && pushState === "unsupported" && <div className="wp-alert wp-alert--error">Ovaj browser ne podržava push notifikacije.</div>}
+        {!isAdmin && pushState === "insecure" && <div className="wp-alert wp-alert--error">Push notifikacije zahtijevaju HTTPS. Otvorite HTTPS adresu aplikacije, ne HTTP/IP adresu.</div>}
         {!isAdmin && pushMessage && <div className="wp-alert">{pushMessage}</div>}
         {error && <div className="wp-alert wp-alert--error">{error}</div>}
         {loading ? (

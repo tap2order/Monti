@@ -12,7 +12,10 @@ export default function AdminHome() {
 
   useEffect(() => {
     if (!isAdminLoggedIn()) nav("/admin");
-    getPushState().then(setPushState).catch(() => setPushState("unsupported"));
+    getPushState().then(setPushState).catch((error) => {
+      setPushState("disabled");
+      setPushMessage(error.message || "Nije moguće provjeriti stanje notifikacija.");
+    });
   }, [nav]);
 
   async function togglePush() {
@@ -30,7 +33,7 @@ export default function AdminHome() {
         setPushMessage("Notifikacije su uključene na ovom uređaju.");
       }
     } catch (error) {
-      setPushState(await getPushState().catch(() => "unsupported"));
+      setPushState(await getPushState().catch(() => "disabled"));
       setPushMessage(error.message || "Notifikacije nije moguće uključiti.");
     }
   }
@@ -53,11 +56,12 @@ export default function AdminHome() {
               type="button"
               className={`adminHomeNotificationBtn${pushState === "enabled" ? " is-enabled" : ""}`}
               onClick={togglePush}
-              disabled={pushState === "loading" || pushState === "unsupported" || pushState === "denied"}
+              disabled={pushState === "loading" || pushState === "unsupported" || pushState === "insecure" || pushState === "denied"}
             >
               {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : "Uključi notifikacije"}
             </button>
             {pushState === "unsupported" && <span>Browser ne podržava push notifikacije.</span>}
+            {pushState === "insecure" && <span>Push notifikacije zahtijevaju HTTPS adresu.</span>}
             {pushState === "denied" && <span>Notifikacije su blokirane u postavkama browsera.</span>}
             {pushMessage && <span>{pushMessage}</span>}
           </div>
