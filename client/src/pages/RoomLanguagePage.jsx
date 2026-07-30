@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { PoweredByFooter, PrimaryMenuCard, QuickInfoPanel, ServiceGrid, WelcomeHero } from "../components/GuestWelcome";
+import { PoweredByFooter, PrimaryMenuCard, QuickInfoPanel, ServiceActionCards, WelcomeHero } from "../components/GuestWelcome";
 import { GUEST_HOTEL_CONFIG } from "../guestHotelConfig";
 import { GUEST_WELCOME_COPY } from "../guestWelcomeContent";
 import { fetchIgmanWeather } from "../igmanWeather";
@@ -108,7 +108,6 @@ export default function RoomLanguagePage() {
     }
   };
 
-  const openLocation = () => window.open(GUEST_HOTEL_CONFIG.location.mapsUrl, "_blank", "noopener,noreferrer");
   const openServices = () => navigate(`/t/${tableId}/services?lang=${lang}`);
   const openCall = () => { setCallError(""); setModal("call"); };
 
@@ -122,7 +121,7 @@ export default function RoomLanguagePage() {
           <h2 id="restaurant-title">{t.restaurantRoomService}</h2>
           <PrimaryMenuCard t={t} onClick={() => navigate(`/t/${tableId}/menu?lang=${lang}`)} />
         </section>
-        <ServiceGrid t={t} onOpenServices={openServices} onOpenCall={openCall} onOpenLocation={openLocation} />
+        <ServiceActionCards t={t} onOpenServices={openServices} onOpenCall={openCall} />
         <PoweredByFooter t={t} />
       </div>
 
