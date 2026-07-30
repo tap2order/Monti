@@ -4,6 +4,7 @@ import { BrowserQRCodeReader } from "@zxing/browser";
 import { Camera, CircleHelp, RefreshCw } from "lucide-react";
 import { confirmGuestRoomSession, guestFetch, guestJson } from "../guestSession";
 import { getBilingualCameraText, getGuestVerificationText } from "../guestVerificationText";
+import { RoomDisplayContext } from "../roomDisplay";
 import {
   CAMERA_CONSTRAINTS,
   CAMERA_FALLBACK_CONSTRAINTS,
@@ -60,6 +61,7 @@ export default function RoomSessionGate({ children }) {
   const [cameraIssue, setCameraIssue] = useState("");
   const [showInstructions, setShowInstructions] = useState(false);
   const [permissionState, setPermissionState] = useState("unknown");
+  const [room, setRoom] = useState(null);
   const requestedLanguage = new URLSearchParams(location.search).get("lang") || "bs";
   const language = ["bs", "en", "de", "tr", "ar"].includes(requestedLanguage) ? requestedLanguage : "bs";
   const text = getGuestVerificationText(language);
@@ -130,6 +132,7 @@ export default function RoomSessionGate({ children }) {
         payload = confirmed.payload;
       }
       if (payload?.status === "verified" && String(payload.roomId) === String(tableId)) {
+        setRoom(payload.room || null);
         cacheVerification(tableId, payload.expiresInSeconds);
         setState("verified");
         scheduleExpiryLock(payload.expiresInSeconds);
@@ -211,6 +214,7 @@ export default function RoomSessionGate({ children }) {
         return;
       }
       cacheVerification(tableId, confirmed.payload.expiresInSeconds);
+      setRoom(confirmed.payload.room || null);
       setState("verified");
       setMessage(BILINGUAL_CAMERA_TEXT.confirmed);
       scheduleExpiryLock(confirmed.payload.expiresInSeconds);
@@ -323,7 +327,9 @@ export default function RoomSessionGate({ children }) {
     };
   }, [cameraIssue]);
 
-  if (state === "verified") return children;
+  if (state === "verified") {
+    return <RoomDisplayContext.Provider value={room}>{children}</RoomDisplayContext.Provider>;
+  }
   const scanning = state === "scanning" || state === "requesting_camera" || state === "verifying";
   const waiting = state === "restoring" || state === "requesting_camera" || state === "verifying";
   const showScanner = canScan || scanning;

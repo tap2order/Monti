@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Utensils } from "lucide-react";
 import { isRoomSessionError, lockRoomSession } from "../roomSession";
+import { useRoomNumber } from "../roomDisplay";
 import {
   availableCategoryGroups,
   filterCategoriesByGroup,
@@ -42,6 +43,7 @@ function DietaryLegend({ inCategoryHeader = false }) {
 
 export default function TablePage() {
   const { tableId } = useParams();
+  const roomNumber = useRoomNumber(tableId);
   const navigate = useNavigate();
   const location = useLocation();
   const api = import.meta.env.VITE_API_URL;
@@ -674,7 +676,7 @@ export default function TablePage() {
           <div>
             <div className="tp-kicker">{t.roomService}</div>
             <h1 className="tp-h1">
-              {t.room} {tableId}
+              {t.room} {roomNumber}
             </h1>
             <div className="tp-sub">
               {selectedCategory ? t.subtitleCategory : t.subtitleHome}

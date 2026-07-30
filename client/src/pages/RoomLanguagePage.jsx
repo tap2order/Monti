@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useRoomNumber } from "../roomDisplay";
 import "../css/RoomChoicePage.css";
 
 export default function RoomLanguagePage() {
   const navigate = useNavigate();
   const { tableId } = useParams();
+  const roomNumber = useRoomNumber(tableId);
   const [searchParams, setSearchParams] = useSearchParams();
   const initialLang = searchParams.get("lang") || "bs";
 
@@ -226,7 +228,7 @@ export default function RoomLanguagePage() {
             <div className="choiceTopText">
               <p className="choiceEyebrow">{t.welcome}</p>
               <h1 className="choiceTitle">
-                {t.room} {tableId}
+                {t.room} {roomNumber}
               </h1>
               <p className="choiceSubtitle">{t.chooseLanguageSubtitle}</p>
             </div>
@@ -303,7 +305,7 @@ export default function RoomLanguagePage() {
           <div className="choiceTopText">
             <p className="choiceEyebrow">{t.welcome}</p>
             <h1 className="choiceTitle">
-              {t.room} {tableId}
+              {t.room} {roomNumber}
             </h1>
             <p className="choiceSubtitle">{t.chooseOption}</p>
           </div>
