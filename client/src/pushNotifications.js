@@ -11,6 +11,14 @@ export function pushIsSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 
+function isIosBrowserTab() {
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+    || navigator.standalone === true;
+  return isIos && !isStandalone;
+}
+
 async function registerPushServiceWorker() {
   try {
     const registration = await navigator.serviceWorker.register("/push-service-worker.js");
@@ -23,6 +31,7 @@ async function registerPushServiceWorker() {
 
 export async function getPushState() {
   if (!window.isSecureContext) return "insecure";
+  if (isIosBrowserTab()) return "foreground-only";
   if (!pushIsSupported()) return "unsupported";
   if (Notification.permission === "denied") return "denied";
   const registration = await registerPushServiceWorker();

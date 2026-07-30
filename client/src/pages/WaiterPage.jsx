@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
 import "../css/WaiterPage.css";
 import { clearAdminAuth, getAdminToken } from "../adminAuth";
+import { announceAdminNotification, unlockAdminNotificationSound } from "../adminNotificationAlert";
 import { clearStaffToken, getStaffToken, setStaffToken } from "../staffAuth";
 import { disableStaffPush, enableStaffPush, getPushState } from "../pushNotifications";
 
@@ -138,6 +139,7 @@ export default function WaiterPage({ accessMode = "staff" }) {
     const socket = io(api, { transports: ["websocket"], auth: { token } });
     socketRef.current = socket;
     socket.on("order:new", (order) => {
+      if (!isAdmin) announceAdminNotification({ id: `order-${order.id}`, type: "order" });
       setOrders((current) => current.some((item) => item.id === order.id) ? current : [order, ...current]);
     });
     socket.on("order:updated", (order) => {
@@ -153,6 +155,7 @@ export default function WaiterPage({ accessMode = "staff" }) {
       setClaimedOrders((current) => current.filter((item) => item.id !== orderId));
     });
     socket.on("call:new", (call) => {
+      if (!isAdmin) announceAdminNotification({ id: `call-${call.id}`, type: "call" });
       setCalls((current) => current.some((item) => item.id === call.id) ? current : [call, ...current]);
     });
     socket.on("call:handled", ({ callId }) => {
@@ -163,6 +166,17 @@ export default function WaiterPage({ accessMode = "staff" }) {
     // The authenticated token is the lifecycle boundary for this socket.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, isAdmin, navigate, token]);
+
+  useEffect(() => {
+    if (!token || isAdmin) return undefined;
+    const unlockSound = () => unlockAdminNotificationSound();
+    window.addEventListener("pointerdown", unlockSound, { once: true });
+    window.addEventListener("keydown", unlockSound, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlockSound);
+      window.removeEventListener("keydown", unlockSound);
+    };
+  }, [isAdmin, token]);
 
   useEffect(() => {
     if (!token || isAdmin) return;
@@ -277,9 +291,9 @@ export default function WaiterPage({ accessMode = "staff" }) {
               <button
                 className={`wp-btn ${pushState === "enabled" ? "wp-btn--success" : "wp-btn--primary"}`}
                 onClick={toggleStaffPush}
-                disabled={pushState === "loading" || pushState === "unsupported" || pushState === "insecure" || pushState === "denied"}
+                disabled={pushState === "loading" || pushState === "unsupported" || pushState === "foreground-only" || pushState === "insecure" || pushState === "denied"}
               >
-                {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : "Uključi notifikacije"}
+                {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : pushState === "foreground-only" ? "Zvuk je aktivan" : "Uključi notifikacije"}
               </button>
               <button className="wp-btn wp-btn--ghost" onClick={logoutStaff}>Odjava</button>
             </div>
@@ -287,6 +301,7 @@ export default function WaiterPage({ accessMode = "staff" }) {
         </header>
         {!isAdmin && pushState === "denied" && <div className="wp-alert wp-alert--error">Notifikacije su blokirane u postavkama browsera.</div>}
         {!isAdmin && pushState === "unsupported" && <div className="wp-alert wp-alert--error">Ovaj browser ne podržava push notifikacije.</div>}
+        {!isAdmin && pushState === "foreground-only" && <div className="wp-alert">Zvuk i obavijesti rade dok je ova stranica otvorena. Za obavijesti kada je zatvorena, pokrenite aplikaciju s početnog ekrana.</div>}
         {!isAdmin && pushState === "insecure" && <div className="wp-alert wp-alert--error">Push notifikacije zahtijevaju HTTPS. Otvorite HTTPS adresu aplikacije, ne HTTP/IP adresu.</div>}
         {!isAdmin && pushMessage && <div className="wp-alert">{pushMessage}</div>}
         {error && <div className="wp-alert wp-alert--error">{error}</div>}

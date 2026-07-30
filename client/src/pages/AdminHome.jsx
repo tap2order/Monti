@@ -56,11 +56,12 @@ export default function AdminHome() {
               type="button"
               className={`adminHomeNotificationBtn${pushState === "enabled" ? " is-enabled" : ""}`}
               onClick={togglePush}
-              disabled={pushState === "loading" || pushState === "unsupported" || pushState === "insecure" || pushState === "denied"}
+              disabled={pushState === "loading" || pushState === "unsupported" || pushState === "foreground-only" || pushState === "insecure" || pushState === "denied"}
             >
-              {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : "Uključi notifikacije"}
+              {pushState === "enabled" ? "Isključi notifikacije" : pushState === "loading" ? "Provjera…" : pushState === "foreground-only" ? "Zvuk je aktivan" : "Uključi notifikacije"}
             </button>
             {pushState === "unsupported" && <span>Browser ne podržava push notifikacije.</span>}
+            {pushState === "foreground-only" && <span>Zvuk radi dok je stranica otvorena. Push je dostupan kada aplikaciju pokrenete s početnog ekrana.</span>}
             {pushState === "insecure" && <span>Push notifikacije zahtijevaju HTTPS adresu.</span>}
             {pushState === "denied" && <span>Notifikacije su blokirane u postavkama browsera.</span>}
             {pushMessage && <span>{pushMessage}</span>}
