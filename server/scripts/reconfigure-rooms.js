@@ -6,14 +6,14 @@ const { PrismaClient, Prisma } = require("@prisma/client");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const prisma = new PrismaClient();
-const EXPECTED_ACTIVE_COUNT = 64;
+const EXPECTED_NUMBERED_ROOM_COUNT = 64;
 const ADVISORY_LOCK_KEY = 2026073001;
 const ACTIVE_NUMBERS = [
   ...range(102, 124),
   ...range(201, 224),
   ...range(301, 315),
+  401,
   402,
-  410,
 ];
 
 function range(from, to) {
@@ -55,12 +55,12 @@ function stableRows(rows) {
 }
 
 function buildPlan(rows) {
-  if (ACTIVE_NUMBERS.length !== EXPECTED_ACTIVE_COUNT) {
-    throw new Error(`Greška u skripti: lista nema ${EXPECTED_ACTIVE_COUNT} brojeva.`);
+  if (ACTIVE_NUMBERS.length !== EXPECTED_NUMBERED_ROOM_COUNT) {
+    throw new Error(`Greška u skripti: lista nema ${EXPECTED_NUMBERED_ROOM_COUNT} brojeva.`);
   }
-  if (rows.length < EXPECTED_ACTIVE_COUNT) {
+  if (rows.length < EXPECTED_NUMBERED_ROOM_COUNT) {
     throw new Error(
-      `Baza ima ${rows.length} soba, a potrebno je najmanje ${EXPECTED_ACTIVE_COUNT}. ` +
+      `Baza ima ${rows.length} soba, a potrebno je najmanje ${EXPECTED_NUMBERED_ROOM_COUNT}. ` +
         "Skripta neće kreirati niti prenamijeniti nepostojeće zapise.",
     );
   }
@@ -69,8 +69,17 @@ function buildPlan(rows) {
   const available = new Set(ordered.map((row) => row.id));
   const assigned = new Map();
 
+  // These two mappings were explicitly confirmed after the initial rollout.
+  for (const [id, number] of [["63", 401], ["64", 402]]) {
+    if (available.has(id)) {
+      assigned.set(id, number);
+      available.delete(id);
+    }
+  }
+
   // Keep already-correct room numbers on their existing records where possible.
   for (const number of ACTIVE_NUMBERS) {
+    if ([...assigned.values()].includes(number)) continue;
     const matches = ordered.filter(
       (row) => available.has(row.id) && currentRoomNumber(row) === number,
     );
@@ -103,8 +112,8 @@ function buildPlan(rows) {
       id: row.id,
       oldName: row.name,
       oldIsActive: row.isActive,
-      newName: isActive ? `Soba ${activeNumber}` : `Rezervna soba ${reserveNumber}`,
-      newIsActive: isActive,
+      newName: isActive ? `Soba ${activeNumber}` : `Rezervni kod ${reserveNumber}`,
+      newIsActive: true,
       createdAt: row.createdAt,
     };
   });
@@ -114,17 +123,18 @@ function printPlan(rows, plan) {
   const changes = plan.filter(
     (row) => row.oldName !== row.newName || row.oldIsActive !== row.newIsActive,
   );
-  const active = plan.filter((row) => row.newIsActive);
-  const reserves = plan.filter((row) => !row.newIsActive);
+  const numberedRooms = plan.filter((row) => row.newName.startsWith("Soba "));
+  const reserves = plan.filter((row) => row.newName.startsWith("Rezervni kod "));
 
   console.log(`Trenutni broj soba: ${rows.length}`);
   console.log(`Trenutno aktivnih: ${rows.filter((row) => row.isActive).length}`);
-  console.log(`Planirano aktivnih: ${active.length}`);
+  console.log(`Planirano aktivnih: ${plan.filter((row) => row.newIsActive).length}`);
+  console.log(`Planirano numerisanih soba: ${numberedRooms.length}`);
   console.log(`Planirano rezervnih: ${reserves.length}`);
   console.log(`Zapisa koji se mijenjaju: ${changes.length}`);
   console.log("\nTAČNO MAPIRANJE AKTIVNIH SOBA:");
   console.table(
-    active.map((row) => ({
+    numberedRooms.map((row) => ({
       id: row.id,
       "stari naziv": row.oldName,
       "stari status": row.oldIsActive,
@@ -169,17 +179,20 @@ function writeBackup(rows, plan) {
 }
 
 function verifyPlan(plan) {
-  const active = plan.filter((row) => row.newIsActive);
-  if (active.length !== EXPECTED_ACTIVE_COUNT) {
-    throw new Error(`Provjera nije prošla: aktivnih je ${active.length}, ne 64.`);
+  const numberedRooms = plan.filter((row) => row.newName.startsWith("Soba "));
+  if (numberedRooms.length !== EXPECTED_NUMBERED_ROOM_COUNT) {
+    throw new Error(`Provjera nije prošla: numerisanih soba je ${numberedRooms.length}, ne 64.`);
   }
-  const names = active.map((row) => row.newName);
+  if (plan.some((row) => !row.newIsActive)) {
+    throw new Error("Provjera nije prošla: svi zapisi moraju biti aktivni.");
+  }
+  const names = plan.map((row) => row.newName);
   if (new Set(names).size !== names.length) {
-    throw new Error("Provjera nije prošla: postoje dupli aktivni brojevi/nazivi.");
+    throw new Error("Provjera nije prošla: postoje dupli nazivi.");
   }
   const expectedNames = new Set(ACTIVE_NUMBERS.map((number) => `Soba ${number}`));
-  if (names.some((name) => !expectedNames.has(name))) {
-    throw new Error("Provjera nije prošla: pronađen je neočekivan aktivni naziv.");
+  if (numberedRooms.some((row) => !expectedNames.has(row.newName))) {
+    throw new Error("Provjera nije prošla: pronađen je neočekivan broj sobe.");
   }
 }
 
@@ -228,21 +241,23 @@ async function apply() {
       const after = await readRows(tx);
       const active = after.filter((row) => row.isActive);
       const activeNames = active.map((row) => row.name);
+      const numberedNames = activeNames.filter((name) => name.startsWith("Soba "));
       if (
-        active.length !== EXPECTED_ACTIVE_COUNT ||
-        new Set(activeNames).size !== EXPECTED_ACTIVE_COUNT
+        active.length !== after.length ||
+        new Set(activeNames).size !== after.length ||
+        numberedNames.length !== EXPECTED_NUMBERED_ROOM_COUNT
       ) {
         throw new Error("Završna provjera nije prošla; transakcija će biti vraćena.");
       }
       const expected = new Set(ACTIVE_NUMBERS.map((number) => `Soba ${number}`));
-      if (activeNames.some((name) => !expected.has(name))) {
-        throw new Error("Aktivne sobe ne odgovaraju traženoj listi; transakcija će biti vraćena.");
+      if (numberedNames.some((name) => !expected.has(name))) {
+        throw new Error("Numerisane sobe ne odgovaraju traženoj listi; transakcija će biti vraćena.");
       }
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 120000 },
   );
 
-  console.log("\nUSPJEH: tačno 64 sobe su aktivne, bez duplih aktivnih naziva.");
+  console.log("\nUSPJEH: 64 numerisane sobe i svi rezervni kodovi su aktivni, bez duplih naziva.");
   console.log(`Rollback komanda: node scripts/reconfigure-rooms.js --rollback "${backup}"`);
 }
 
